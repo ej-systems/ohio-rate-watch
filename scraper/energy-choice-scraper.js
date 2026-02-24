@@ -58,70 +58,67 @@ async function fetchRatePage(category, territoryId, rateCode) {
     suppliers: [],
   };
 
+  // Decode HTML entities
+  const decode = (s) => s.replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').trim();
+
   // --- Parse default/SCO rate from narrative text ---
-  // Format: "CGO's SCO rate is $1.071 per ccf - Effective January 30, 2026 through March 1, 2026"
-  const scoMatch = html.match(
-    /\$([\d.]+)\s*per\s*ccf[^<]*Effective\s*([^<.]+)/i
-  );
+  // The SCO rate is split across multiple nested HTML tags (strong/span styling) — strip tags first
+  // Extract the relevant section around "SCO rate is" or "Standard Offer"
+  const scoSection = (() => {
+    const idx = html.indexOf('SCO rate is');
+    if (idx === -1) return '';
+    return html.substring(idx, idx + 800)
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&#\d+;/g, ' ')
+      .replace(/\s+/g, ' ');
+  })();
+
+  const scoMatch = scoSection.match(/\$([\d.]+)\s*per\s*ccf\s*-\s*Effective\s*([^.]+)/i);
   if (scoMatch) {
     result.defaultRate = parseFloat(scoMatch[1]);
-    result.defaultRateText = scoMatch[2].trim().replace(/&nbsp;/g, ' ');
+    result.defaultRateText = decode(scoMatch[2]);
   }
 
   // Also look for kWh pricing (electric)
-  const kwhMatch = html.match(/\$([\d.]+)\s*per\s*kWh[^<]*Effective\s*([^<.]+)/i);
+  const kwhSection = (() => {
+    const idx = html.indexOf('standard offer');
+    if (idx === -1) return '';
+    return html.substring(idx, idx + 800).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
+  })();
+  const kwhMatch = kwhSection.match(/\$([\d.]+)\s*per\s*kWh\s*-?\s*Effective\s*([^.]+)/i);
   if (kwhMatch) {
     result.defaultRate = parseFloat(kwhMatch[1]);
-    result.defaultRateText = kwhMatch[2].trim();
+    result.defaultRateText = decode(kwhMatch[2]);
   }
 
   // --- Parse supplier rate table ---
-  // Suppliers are in <span class='retail-title'>NAME<p>...</p></span>
-  // with price data in adjacent <td> cells
-  const supplierPattern = /<span class='retail-title'>([\s\S]*?)<\/span>/g;
-  const pricePattern = /showTextInDialog\("Offer Details","([^"]+)"\)/g;
+  // Structure: <td><span class='retail-title'>NAME...</span>...offer details...</td><td>PRICE</td><td>RateType</td>...
+  // Rows are separated by <span class='retail-title'>
+  const rowPattern = /<span class='retail-title'>([\s\S]*?)<\/span>[\s\S]*?<\/td>\s*<td[^>]*>\s*([\d.]+)\s*<\/td>\s*<td[^>]*>([\s\S]*?)<\/td>/g;
 
-  // Extract all retail-title spans
-  const supplierNames = [];
-  let sm;
-  while ((sm = supplierPattern.exec(html)) !== null) {
-    // Strip HTML tags to get company name
-    const name = sm[1].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().split('\n')[0].trim();
-    supplierNames.push(name);
-  }
+  let rm;
+  while ((rm = rowPattern.exec(html)) !== null) {
+    // Company name is the first text node before the first <p>
+    const rawName = rm[1].replace(/<p[\s\S]*$/, '').replace(/<[^>]+>/g, '').trim();
+    const price = parseFloat(rm[2]);
+    const rateTypeHtml = rm[3];
 
-  // Extract all offer detail texts (price info)
-  const offerDetails = [];
-  let pm;
-  while ((pm = pricePattern.exec(html)) !== null) {
-    offerDetails.push(pm[1].replace(/<br\/>/g, ' ').replace(/&lt;/g, '<').replace(/&gt;/g, '>'));
-  }
-
-  // Pair them up (order matches in the HTML)
-  for (let i = 0; i < supplierNames.length; i++) {
-    const detail = offerDetails[i] || '';
-
-    // Try to extract the price from the offer detail text
-    const priceMatch = detail.match(/([\d.]+)\s*(?:\/Ccf|\/ccf|\/kWh|per ccf|per kWh)/i);
-    const price = priceMatch ? parseFloat(priceMatch[1]) : null;
-
-    // Extract rate type from the text
-    const rateType = /fixed/i.test(detail)
-      ? 'fixed'
-      : /variable/i.test(detail)
-      ? 'variable'
+    // Rate type from the next <td>
+    const rateType = /fixed/i.test(rateTypeHtml) ? 'fixed'
+      : /variable/i.test(rateTypeHtml) ? 'variable'
       : 'unknown';
 
-    // Extract term length
-    const termMatch = detail.match(/(\d+)\s*(?:month|mo)/i);
+    // Extract term length from the row (look ahead a bit)
+    const rowContext = html.substring(rm.index, rm.index + 800);
+    const termMatch = rowContext.match(/(\d+)\s*(?:mo\.|months?)/i);
     const termMonths = termMatch ? parseInt(termMatch[1], 10) : null;
 
     result.suppliers.push({
-      name: supplierNames[i],
-      price,
+      name: rawName,
+      price: isNaN(price) ? null : price,
       rateType,
       termMonths,
-      offerDetail: detail.substring(0, 200),
     });
   }
 
@@ -238,8 +235,13 @@ function detectChanges(previous, current) {
   return changes;
 }
 
-// CLI entry point
-const results = await scrapeAllRates();
-process.stdout.write(JSON.stringify(results, null, 2) + '\n');
+// CLI entry point (only runs when executed directly, not when imported)
+// Node.js v25 has strict TLS by default — energychoice.ohio.gov uses an intermediate cert
+// that the built-in CA store doesn't include. Use --use-system-ca or set NODE_TLS_REJECT_UNAUTHORIZED=0 for dev.
+const isMain = process.argv[1] && import.meta.url.endsWith(process.argv[1].replace(/\\/g, '/'));
+if (isMain || process.argv[1]?.includes('energy-choice-scraper')) {
+  const results = await scrapeAllRates();
+  process.stdout.write(JSON.stringify(results, null, 2) + '\n');
+}
 
 export { scrapeAllRates, fetchRatePage, detectChanges };
