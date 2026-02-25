@@ -124,10 +124,9 @@ function isRateLimited(ip) {
  * Build chart data from real DB queries.
  * Returns { columbiaGasSco, enbridgeGasSco, centerpointSco, henryHub, bestFixed, events }
  */
-function buildChartData() {
+function buildChartData(longterm = false) {
   const db = getDb();
 
-  // Helper: query rate_history for a utility SCO series
   function getScoSeries(territory_id) {
     return db.prepare(`
       SELECT strftime('%Y-%m', date) as month, rate
@@ -137,30 +136,30 @@ function buildChartData() {
     `).all(territory_id).map(r => ({ date: r.month, value: r.rate }));
   }
 
-  // Henry Hub: monthly avg price ($/MMBtu) from rate_snapshots, stored as-is
-  // Divide by 10 to convert to $/CCF for consistent scale
+  const hhStart = longterm ? '2000-01-01' : '2018-01-01';
   const henryHub = db.prepare(`
     SELECT strftime('%Y-%m', scraped_at) as month,
            ROUND(AVG(price) / 10.0, 4) as value
     FROM rate_snapshots
     WHERE supplier_name = 'Henry Hub Spot Price'
       AND price IS NOT NULL
+      AND scraped_at >= ?
     GROUP BY month
     ORDER BY month ASC
-  `).all().map(r => ({ date: r.month, value: r.value }));
+  `).all(hhStart).map(r => ({ date: r.month, value: r.value }));
 
-  // Best fixed rate: min fixed price today across all territories
   const bestFixedRow = db.prepare(`
     SELECT MIN(price) as best
     FROM rate_snapshots
     WHERE rate_type = 'fixed'
       AND price IS NOT NULL
-      AND price > 0
+      AND price > 0.1
+      AND category = 'NaturalGas'
       AND scraped_at >= datetime('now', '-7 days')
   `).get();
   const bestFixed = bestFixedRow?.best ? Math.round(bestFixedRow.best * 1000) / 1000 : 0.499;
 
-  return {
+  const result = {
     columbiaGasSco: getScoSeries(8),
     enbridgeGasSco: getScoSeries(1),
     centerpointSco: getScoSeries(11),
@@ -173,6 +172,34 @@ function buildChartData() {
       { date: '2025-10', label: 'PUCO RPA Increase', icon: '📋' },
     ],
   };
+
+  if (longterm) {
+    // EIA Ohio Residential 2000–2017 as pre-SCO reference baseline
+    result.eiaOhioRef = db.prepare(`
+      SELECT strftime('%Y-%m', scraped_at) as month,
+             ROUND(AVG(sco_rate), 4) as value
+      FROM rate_snapshots
+      WHERE territory_id = 0
+        AND rate_type = 'reference'
+        AND sco_rate IS NOT NULL
+        AND scraped_at >= '2000-01-01'
+        AND scraped_at < '2018-01-01'
+      GROUP BY month
+      ORDER BY month ASC
+    `).all().map(r => ({ date: r.month, value: r.value }));
+
+    result.pucoBoundary = '2018-01';
+    result.events = [
+      { date: '2005-09', label: 'Katrina/Rita Spike', icon: '🌀' },
+      { date: '2008-07', label: '2008 Price Peak', icon: '📈' },
+      { date: '2012-04', label: 'Shale Gas Lows', icon: '⛏️' },
+      { date: '2021-04', label: 'Post-Uri Spike', icon: '❄️' },
+      { date: '2022-10', label: 'Energy Crisis Peak', icon: '💥' },
+      { date: '2025-10', label: 'PUCO RPA Increase', icon: '📋' },
+    ];
+  }
+
+  return result;
 }
 
 const server = http.createServer(async (req, res) => {
@@ -187,7 +214,8 @@ const server = http.createServer(async (req, res) => {
   // Historical chart data endpoint — real PUCO SCO data from DB
   if (req.method === 'GET' && url.pathname === '/api/history/chart-data') {
     try {
-      const chartData = buildChartData();
+      const longterm = url.searchParams.get('range') === 'longterm';
+      const chartData = buildChartData(longterm);
       res.writeHead(200, corsHeaders());
       res.end(JSON.stringify(chartData));
     } catch (err) {
