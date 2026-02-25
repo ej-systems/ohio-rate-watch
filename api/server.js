@@ -93,6 +93,20 @@ async function handleSignup(email, zip) {
   fs.appendFileSync(LOG_FILE, row);
 }
 
+
+// Simple in-memory rate limiter: max 5 signups per IP per hour
+const ipSignupLog = new Map();
+function isRateLimited(ip) {
+  const now = Date.now();
+  const window = 60 * 60 * 1000; // 1 hour
+  const max = 5;
+  const hits = (ipSignupLog.get(ip) || []).filter(t => now - t < window);
+  if (hits.length >= max) return true;
+  hits.push(now);
+  ipSignupLog.set(ip, hits);
+  return false;
+}
+
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://localhost`);
 
@@ -114,6 +128,13 @@ const server = http.createServer(async (req, res) => {
     req.on('data', (chunk) => (body += chunk));
     req.on('end', async () => {
       try {
+        const ip = req.headers['x-forwarded-for']?.split(',')[0].trim() || req.socket.remoteAddress;
+        if (isRateLimited(ip)) {
+          res.writeHead(429, corsHeaders());
+          res.end(JSON.stringify({ error: 'Too many requests. Please try again later.' }));
+          return;
+        }
+
         const { email, zip } = JSON.parse(body);
 
         if (!email || !email.includes('@') || !email.includes('.')) {
