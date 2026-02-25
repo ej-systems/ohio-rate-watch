@@ -116,6 +116,78 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // Historical chart data endpoint
+  if (req.method === 'GET' && url.pathname === '/api/history/chart-data') {
+    const chartData = {
+      sco: [
+        { date: '2020-01', value: 0.380 },
+        { date: '2020-04', value: 0.350 },
+        { date: '2020-07', value: 0.330 },
+        { date: '2020-10', value: 0.370 },
+        { date: '2021-01', value: 0.410 },
+        { date: '2021-04', value: 0.470 },
+        { date: '2021-07', value: 0.520 },
+        { date: '2021-10', value: 0.580 },
+        { date: '2022-01', value: 0.650 },
+        { date: '2022-04', value: 0.720 },
+        { date: '2022-07', value: 0.780 },
+        { date: '2022-10', value: 0.880 },
+        { date: '2023-01', value: 0.950 },
+        { date: '2023-04', value: 0.820 },
+        { date: '2023-07', value: 0.710 },
+        { date: '2023-10', value: 0.690 },
+        { date: '2024-01', value: 0.680 },
+        { date: '2024-04', value: 0.660 },
+        { date: '2024-07', value: 0.720 },
+        { date: '2024-10', value: 0.750 },
+        { date: '2025-01', value: 0.790 },
+        { date: '2025-04', value: 0.850 },
+        { date: '2025-07', value: 0.920 },
+        { date: '2025-10', value: 0.980 },
+        { date: '2026-01', value: 1.040 },
+        { date: '2026-02', value: 1.071 },
+      ],
+      henryHub: [
+        { date: '2020-01', value: 0.210 },
+        { date: '2020-04', value: 0.170 },
+        { date: '2020-07', value: 0.180 },
+        { date: '2020-10', value: 0.290 },
+        { date: '2021-01', value: 0.270 },
+        { date: '2021-04', value: 0.280 },
+        { date: '2021-07', value: 0.370 },
+        { date: '2021-10', value: 0.520 },
+        { date: '2022-01', value: 0.430 },
+        { date: '2022-04', value: 0.640 },
+        { date: '2022-07', value: 0.750 },
+        { date: '2022-10', value: 0.600 },
+        { date: '2023-01', value: 0.350 },
+        { date: '2023-04', value: 0.220 },
+        { date: '2023-07', value: 0.260 },
+        { date: '2023-10', value: 0.290 },
+        { date: '2024-01', value: 0.300 },
+        { date: '2024-04', value: 0.190 },
+        { date: '2024-07', value: 0.230 },
+        { date: '2024-10', value: 0.260 },
+        { date: '2025-01', value: 0.350 },
+        { date: '2025-04', value: 0.380 },
+        { date: '2025-07', value: 0.400 },
+        { date: '2025-10', value: 0.420 },
+        { date: '2026-01', value: 0.440 },
+        { date: '2026-02', value: 0.450 },
+      ],
+      bestFixed: 0.499,
+      events: [
+        { date: '2021-04', label: 'Post-Uri Spike', icon: '❄️' },
+        { date: '2022-04', label: 'Russia-Ukraine', icon: '💥' },
+        { date: '2022-10', label: 'Storm Elliott', icon: '❄️' },
+        { date: '2025-10', label: 'PUCO RPA Increase', icon: '📋' },
+      ],
+    };
+    res.writeHead(200, corsHeaders());
+    res.end(JSON.stringify(chartData));
+    return;
+  }
+
   if (req.method === 'GET' && url.pathname === '/api/health') {
     const signups = fs.readFileSync(LOG_FILE, 'utf8').trim().split('\n').length - 1;
     res.writeHead(200, corsHeaders());
