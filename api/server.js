@@ -73,6 +73,7 @@ async function handleSignup(email, zip) {
       <p style="color:#444;line-height:1.6;">We'll email you when something worth acting on happens. No spam, ever.</p>
       <p style="color:#999;font-size:0.82rem;margin-top:32px;border-top:1px solid #eee;padding-top:16px;">
         Ohio Rate Watch · A project of EJ Systems LLC · Cleveland, Ohio<br>
+        <a href="tel:8334317283" style="color:#1565c0;">833.431.RATE</a> · 
         <a href="https://ohioratewatch.com" style="color:#1565c0;">ohioratewatch.com</a> · 
         <a href="https://ohioratewatch.com/unsubscribe" style="color:#999;">Unsubscribe</a>
       </p>
