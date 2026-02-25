@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ohio Rate Watch — Stop Overpaying for Natural Gas</title>
+<meta name="description" content="Ohio law lets you choose your natural gas supplier. Compare PUCO certified rates, understand your bill, and get free alerts when rates change.">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f8f9fa; color: #1a1a2e; }
+
+  /* NAV */
+  nav { background: #fff; border-bottom: 2px solid #e8f4f8; padding: 0 24px; display: flex; align-items: center; justify-content: space-between; height: 64px; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+  .logo { font-size: 1.3rem; font-weight: 800; color: #1565c0; letter-spacing: -0.5px; }
+  .logo span { color: #e53935; }
+  nav a { color: #555; text-decoration: none; font-size: 0.9rem; font-weight: 500; }
+  nav a:hover { color: #1565c0; }
+
+  /* HERO */
+  .hero { background: linear-gradient(135deg, #1565c0 0%, #0d47a1 100%); color: #fff; padding: 72px 24px 80px; text-align: center; }
+  .hero .badge { display: inline-block; background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3); padding: 6px 14px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; letter-spacing: 0.5px; margin-bottom: 20px; text-transform: uppercase; }
+  .hero h1 { font-size: clamp(2rem, 5vw, 3.2rem); font-weight: 900; line-height: 1.15; max-width: 780px; margin: 0 auto 20px; }
+  .hero h1 em { color: #ffcc02; font-style: normal; }
+  .hero p { font-size: 1.15rem; opacity: 0.9; max-width: 560px; margin: 0 auto 36px; line-height: 1.6; }
+  .signup-form { display: flex; gap: 10px; max-width: 480px; margin: 0 auto; flex-wrap: wrap; justify-content: center; }
+  .signup-form input { flex: 1; min-width: 180px; padding: 14px 18px; border: none; border-radius: 8px; font-size: 1rem; outline: none; box-shadow: 0 2px 12px rgba(0,0,0,0.15); }
+  .signup-form input.zip { max-width: 110px; min-width: 90px; flex: 0 0 110px; }
+  .signup-form button { background: #ffcc02; color: #1a1a2e; border: none; padding: 14px 24px; border-radius: 8px; font-size: 1rem; font-weight: 700; cursor: pointer; white-space: nowrap; transition: background 0.2s; }
+  .signup-form button:hover { background: #f9a825; }
+  .signup-form button:disabled { opacity: 0.6; cursor: not-allowed; }
+  .hero .subtext { font-size: 0.82rem; opacity: 0.7; margin-top: 12px; }
+  .form-success { color: #a5d6a7; font-weight: 600; margin-top: 12px; font-size: 0.95rem; }
+  .form-error { color: #ef9a9a; font-weight: 600; margin-top: 12px; font-size: 0.95rem; }
+
+  /* STAT BAR */
+  .stats { background: #fff; border-bottom: 1px solid #e0e0e0; display: flex; justify-content: center; flex-wrap: wrap; }
+  .stat { padding: 20px 40px; text-align: center; border-right: 1px solid #e0e0e0; }
+  .stat:last-child { border-right: none; }
+  .stat-num { font-size: 1.8rem; font-weight: 900; color: #1565c0; }
+  .stat-label { font-size: 0.8rem; color: #777; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 2px; }
+
+  /* SECTIONS */
+  section { max-width: 1000px; margin: 0 auto; padding: 56px 24px; }
+  section h2 { font-size: 1.7rem; font-weight: 800; margin-bottom: 8px; color: #1a1a2e; }
+  section .subtitle { color: #666; margin-bottom: 28px; font-size: 1rem; }
+  .updated { font-size: 0.78rem; color: #999; margin-bottom: 20px; }
+  .live-dot { display: inline-block; width: 7px; height: 7px; background: #22c55e; border-radius: 50%; margin-right: 5px; vertical-align: middle; }
+
+  /* ALERT STRIP */
+  .alert-strip { background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px; padding: 12px 18px; font-size: 0.88rem; color: #856404; margin-bottom: 20px; display: flex; gap: 10px; align-items: center; }
+
+  /* UTILITY TABS */
+  .tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 24px; }
+  .tab { padding: 8px 18px; border-radius: 20px; border: 2px solid #e0e0e0; background: #fff; font-size: 0.85rem; font-weight: 600; cursor: pointer; color: #555; transition: all 0.15s; }
+  .tab.active { background: #1565c0; color: #fff; border-color: #1565c0; }
+
+  /* RATE CARD */
+  .rate-card { background: #fff; border-radius: 14px; box-shadow: 0 2px 20px rgba(0,0,0,0.08); overflow: hidden; margin-bottom: 12px; }
+  .rate-card-header { background: #1565c0; color: #fff; padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
+  .rate-card-header h3 { font-size: 1rem; font-weight: 700; }
+  .sco-badge { background: rgba(255,255,255,0.2); padding: 4px 12px; border-radius: 12px; font-size: 0.82rem; font-weight: 600; }
+  .sco-sub { font-size: 0.72rem; opacity: 0.75; }
+
+  /* RATE TYPE EXPLAINER */
+  .rate-type-explainer { display: flex; gap: 12px; padding: 14px 20px; background: #f9fafb; border-bottom: 1px solid #f0f0f0; }
+  .rte-box { flex: 1; padding: 10px 14px; border-radius: 8px; font-size: 0.78rem; line-height: 1.5; }
+  .rte-box.fixed { background: #eff6ff; border: 1px solid #bfdbfe; }
+  .rte-box.variable { background: #fff7ed; border: 1px solid #fed7aa; }
+  .rte-box strong { display: block; margin-bottom: 4px; font-size: 0.8rem; }
+  .rte-box.fixed strong { color: #1d4ed8; }
+  .rte-box.variable strong { color: #c2410c; }
+  .rte-box p { color: #4b5563; }
+
+  /* RATE SECTIONS */
+  .rate-section-label { padding: 10px 20px 6px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; border-top: 2px solid #f0f0f0; }
+  .rate-section-label.fixed { color: #1d4ed8; background: #f8fbff; }
+  .rate-section-label.variable { color: #c2410c; background: #fffbf7; border-top-color: #fed7aa; }
+
+  /* RATE TABLE */
+  .rate-table { width: 100%; border-collapse: collapse; }
+  .rate-table th { text-align: left; padding: 8px 16px; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.5px; color: #9ca3af; border-bottom: 1px solid #f0f0f0; }
+  .rate-table th.center { text-align: center; }
+  .rate-table td { padding: 13px 16px; border-bottom: 1px solid #f5f5f5; font-size: 0.9rem; vertical-align: middle; }
+  .rate-table tr:last-child td { border-bottom: none; }
+  .rate-table tr:hover td { background: #fafbff; }
+  .rate-table tr.var-row td { background: #fffbf7; }
+  .rate-table tr.var-row:hover td { background: #fff3e8; }
+  .rate-table tr.promo-row td { background: #fffbeb !important; }
+  .price { font-weight: 700; font-size: 1rem; color: #16a34a; }
+  .price-high { color: #c62828; }
+  .savings-pill { display: inline-block; background: #dcfce7; color: #14532d; font-size: 0.65rem; font-weight: 700; border-radius: 8px; padding: 2px 6px; margin-left: 6px; }
+  .pill { display: inline-block; padding: 3px 9px; border-radius: 10px; font-size: 0.7rem; font-weight: 600; }
+  .pill-fixed { background: #dbeafe; color: #1e40af; }
+  .pill-variable { background: #ffedd5; color: #c2410c; }
+  .pill-default { background: #fee2e2; color: #b91c1c; }
+  .center-cell { text-align: center; }
+  .fee-free { color: #16a34a; font-weight: 600; font-size: 0.85rem; }
+  .fee-charged { color: #dc2626; font-weight: 600; font-size: 0.85rem; }
+  .flag-promo { display: inline-block; background: #fef3c7; color: #92400e; font-size: 0.65rem; font-weight: 700; border-radius: 6px; padding: 2px 7px; margin-top: 3px; }
+  .flag-intro { display: inline-block; background: #e0f2fe; color: #0369a1; font-size: 0.65rem; font-weight: 700; border-radius: 6px; padding: 2px 7px; margin-top: 3px; }
+  .flag-green { display: inline-block; background: #dcfce7; color: #166534; font-size: 0.65rem; font-weight: 700; border-radius: 6px; padding: 2px 7px; margin-top: 3px; }
+  .flag-bundle { display: inline-block; background: #fce7f3; color: #9d174d; font-size: 0.65rem; font-weight: 700; border-radius: 6px; padding: 2px 7px; margin-top: 3px; }
+  .more-row td { text-align: center; padding: 10px; font-size: 0.8rem; color: #3b82f6; font-weight: 600; cursor: pointer; border-top: 1px solid #f0f0f0; }
+  .disclaimer { font-size: 0.75rem; color: #9ca3af; margin-top: 8px; margin-bottom: 32px; }
+
+  /* ===== BILL EXPLAINER ===== */
+  .bill-section { background: #fff; margin: 0; max-width: 100%; padding: 56px 24px; }
+  .bill-inner { max-width: 1000px; margin: 0 auto; }
+  .bill-inner h2 { font-size: 1.7rem; font-weight: 800; margin-bottom: 8px; color: #1a1a2e; }
+  .bill-inner .subtitle { color: #666; margin-bottom: 32px; font-size: 1rem; }
+
+  .bill-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 28px; }
+  @media (max-width: 700px) { .bill-columns { grid-template-columns: 1fr; } }
+
+  .bill-col { border-radius: 14px; overflow: hidden; border: 2px solid transparent; }
+  .bill-col.delivery { border-color: #bfdbfe; }
+  .bill-col.supply { border-color: #bbf7d0; }
+
+  .bill-col-header { padding: 14px 20px; font-size: 0.85rem; font-weight: 700; display: flex; align-items: center; gap: 10px; }
+  .bill-col-header .badge-lock { background: #1e40af; color: white; font-size: 0.7rem; padding: 2px 9px; border-radius: 10px; }
+  .bill-col-header .badge-change { background: #16a34a; color: white; font-size: 0.7rem; padding: 2px 9px; border-radius: 10px; }
+  .bill-col.delivery .bill-col-header { background: #eff6ff; color: #1e3a8a; }
+  .bill-col.supply .bill-col-header { background: #f0fdf4; color: #14532d; }
+
+  .bill-line { display: flex; justify-content: space-between; align-items: flex-start; padding: 10px 20px; border-bottom: 1px solid #f3f4f6; font-size: 0.85rem; gap: 12px; }
+  .bill-line:last-child { border-bottom: none; }
+  .bill-line-name { color: #374151; line-height: 1.4; }
+  .bill-line-sub { font-size: 0.72rem; color: #9ca3af; margin-top: 2px; }
+  .bill-line-amount { font-weight: 700; white-space: nowrap; color: #111827; }
+  .bill-total { display: flex; justify-content: space-between; padding: 12px 20px; font-weight: 800; font-size: 0.95rem; margin-top: 2px; }
+  .bill-col.delivery .bill-total { background: #eff6ff; color: #1e3a8a; border-top: 2px solid #bfdbfe; }
+  .bill-col.supply .bill-total { background: #f0fdf4; color: #14532d; border-top: 2px solid #bbf7d0; }
+
+  .bill-insight { background: linear-gradient(135deg, #fefce8, #fef3c7); border: 2px solid #fbbf24; border-radius: 12px; padding: 20px 24px; display: flex; gap: 16px; align-items: flex-start; margin-bottom: 24px; }
+  .bill-insight-icon { font-size: 1.6rem; flex-shrink: 0; margin-top: 2px; }
+  .bill-insight-text h4 { font-size: 1rem; font-weight: 800; color: #78350f; margin-bottom: 6px; }
+  .bill-insight-text p { font-size: 0.88rem; color: #78350f; line-height: 1.55; }
+
+  .riders-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-top: 24px; }
+  .rider-card { background: #f8f9fa; border-radius: 10px; padding: 14px 16px; border-left: 3px solid #bfdbfe; }
+  .rider-card h5 { font-size: 0.78rem; font-weight: 700; color: #1e3a8a; margin-bottom: 5px; }
+  .rider-card p { font-size: 0.74rem; color: #6b7280; line-height: 1.45; }
+  .rider-amount { font-size: 0.7rem; font-weight: 700; color: #374151; margin-top: 4px; }
+
+  /* HOW IT WORKS */
+  .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 24px; margin-top: 32px; }
+  .step { background: #fff; border-radius: 12px; padding: 28px 24px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
+  .step-num { width: 40px; height: 40px; background: #1565c0; color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 1.1rem; margin-bottom: 16px; }
+  .step h4 { font-size: 1rem; font-weight: 700; margin-bottom: 8px; }
+  .step p { font-size: 0.88rem; color: #666; line-height: 1.5; }
+
+  /* MISSION */
+  .mission { background: linear-gradient(135deg, #fff8e1, #fff3e0); border-left: 4px solid #ffcc02; border-radius: 0 12px 12px 0; padding: 28px 32px; }
+  .mission h3 { font-size: 1.1rem; font-weight: 800; margin-bottom: 10px; color: #e65100; }
+  .mission p { color: #555; line-height: 1.65; font-size: 0.95rem; }
+
+  /* 811 CALLOUT */
+  .callout-811 { background: #1a1a2e; color: #ccc; padding: 24px; display: flex; align-items: center; justify-content: center; gap: 20px; flex-wrap: wrap; font-size: 0.85rem; }
+  .callout-811 strong { color: #fff; font-size: 1rem; }
+  .callout-811 .num-811 { font-size: 2rem; font-weight: 900; color: #ffcc02; line-height: 1; }
+  .callout-811-text { max-width: 480px; line-height: 1.55; }
+
+  /* FOOTER CTA */
+  .footer-cta { background: #1565c0; color: #fff; padding: 56px 24px; text-align: center; }
+  .footer-cta h2 { font-size: 1.8rem; margin-bottom: 12px; color: #fff; }
+  .footer-cta p { opacity: 0.85; margin-bottom: 28px; max-width: 480px; margin-left: auto; margin-right: auto; }
+
+  /* FOOTER */
+  footer { background: #111827; color: #9ca3af; padding: 28px 24px; text-align: center; font-size: 0.82rem; line-height: 1.8; }
+  footer strong { color: #fff; }
+  footer a { color: #60a5fa; text-decoration: none; }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="logo">Ohio<span>Rate</span>Watch</div>
+  <a href="#">Sign Up for Free Alerts</a>
+</nav>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="badge">🔔 Free Rate Alerts · Ohio Natural Gas</div>
+  <h1>Stop paying <em>double</em> for<br>your natural gas.</h1>
+  <p>Ohio law gives you the right to choose your natural gas supplier. Most people don't know — and pay far more than they have to. We watch the rates so you don't have to.</p>
+  <form class="signup-form" id="hero-form">
+    <input type="email" id="hero-email" placeholder="Your email address" required>
+    <input type="text" class="zip" id="hero-zip" placeholder="Zip code" maxlength="5">
+    <button type="submit" id="hero-btn">Get Free Alerts →</button>
+  </form>
+  <div id="hero-msg"></div>
+  <div class="subtext">Free forever · No spam · Unsubscribe anytime</div>
+</div>
+
+<!-- STATS -->
+<div class="stats">
+  <div class="stat"><div class="stat-num">254</div><div class="stat-label">Supplier Offers Tracked</div></div>
+  <div class="stat"><div class="stat-num">4</div><div class="stat-label">Ohio Gas Territories</div></div>
+  <div class="stat"><div class="stat-num">54%</div><div class="stat-label">Max Fixed Rate Savings</div></div>
+  <div class="stat"><div class="stat-num">Daily</div><div class="stat-label">Rate Updates</div></div>
+</div>
+
+<!-- RATES SECTION -->
+<section>
+  <h2>Current Ohio Natural Gas Rates</h2>
+  <p class="subtitle">Live data from PUCO Energy Choice Ohio — updated daily. These are certified rates from licensed suppliers.</p>
+
+  <div class="alert-strip">
+    ⚡ <strong>Columbia Gas customers:</strong> Default SCO rate is $1.071/ccf. Fixed-rate suppliers are currently offering up to 54% less — without giving up delivery service.
+  </div>
+
+  <p class="updated"><span class="live-dot"></span>Last updated: February 25, 2026 · Source: energychoice.ohio.gov</p>
+
+  <div class="tabs">
+    <div class="tab active">Columbia Gas (most of Ohio)</div>
+    <div class="tab">Duke Energy Ohio</div>
+    <div class="tab">Dominion/Enbridge Ohio</div>
+    <div class="tab">Vectren/CenterPoint</div>
+  </div>
+
+  <div class="rate-card">
+    <div class="rate-card-header">
+      <h3>Columbia Gas of Ohio — Residential (Rate Code 1)</h3>
+      <div>
+        <div class="sco-badge">Default SCO: $1.071/ccf</div>
+        <div class="sco-sub" style="text-align:right;margin-top:3px;">Effective through March 2026</div>
+      </div>
+    </div>
+
+    <!-- Explainer -->
+    <div class="rate-type-explainer">
+      <div class="rte-box fixed">
+        <strong>🔒 Fixed Rate</strong>
+        <p>Your price per ccf is locked for the contract term, even if the market rises. Best for predictability. Check the <strong>Early Term Fee</strong> before you sign — breaking a 12-month contract early can cost $75–$150.</p>
+      </div>
+      <div class="rte-box variable">
+        <strong>📈 Variable Rate</strong>
+        <p>Price adjusts month-to-month with the market. No long commitment. <strong>Watch out for intro rates</strong> — some companies advertise a low price that only lasts 1 month, then switches to market rate.</p>
+      </div>
+    </div>
+
+    <!-- Fixed Rate Section -->
+    <div class="rate-section-label fixed">🔒 Fixed Rate Plans</div>
+    <table class="rate-table">
+      <thead>
+        <tr>
+          <th>Supplier</th>
+          <th class="center">Rate ($/ccf)</th>
+          <th class="center">Term</th>
+          <th class="center">Early Term Fee</th>
+          <th class="center">Monthly Fee</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>
+            <strong>Santanna Energy Services</strong><br>
+            <span class="flag-bundle">⚠️ Requires Gas + Electric bundle</span>
+          </td>
+          <td class="center-cell"><span class="price">$0.492</span><span class="savings-pill">Save 54%</span></td>
+          <td class="center-cell">12 mo.</td>
+          <td class="center-cell fee-charged">$100</td>
+          <td class="center-cell fee-free">$0</td>
+        </tr>
+        <tr>
+          <td>
+            <strong>Utility Gas and Power</strong><br>
+            <span style="font-size:0.75rem;color:#6b7280;">Guaranteed fixed rate for 12 months</span>
+          </td>
+          <td class="center-cell"><span class="price">$0.499</span><span class="savings-pill">Save 53%</span></td>
+          <td class="center-cell">12 mo.</td>
+          <td class="center-cell fee-charged">$150</td>
+          <td class="center-cell fee-free">$0</td>
+        </tr>
+        <tr>
+          <td>
+            <strong>CleanSky Energy</strong><br>
+            <span class="flag-green">🌱 100% Renewable</span>
+          </td>
+          <td class="center-cell"><span class="price">$0.579</span><span class="savings-pill">Save 46%</span></td>
+          <td class="center-cell">12 mo.</td>
+          <td class="center-cell fee-charged">$75</td>
+          <td class="center-cell fee-free">$0</td>
+        </tr>
+        <tr>
+          <td>
+            <strong>Ohio Gas &amp; Electric</strong><br>
+            <span style="font-size:0.75rem;color:#6b7280;">24-month lock-in, $0 ETF, $50/mo reward dollars</span>
+          </td>
+          <td class="center-cell"><span class="price">$0.639</span><span class="savings-pill">Save 40%</span></td>
+          <td class="center-cell">24 mo.</td>
+          <td class="center-cell fee-free">$0</td>
+          <td class="center-cell fee-free">$0</td>
+        </tr>
+        <tr>
+          <td colspan="5" style="background:#fafafa; padding:8px 16px; font-size:0.8rem; color:#c62828; font-weight:600; text-align:left;">
+            ⬆️ Columbia Gas Default Rate (SCO) — what you pay if you haven't switched
+          </td>
+        </tr>
+        <tr>
+          <td><em style="color:#888;">Columbia Gas Default (SCO)</em></td>
+          <td class="center-cell"><span class="price price-high">$1.071</span></td>
+          <td class="center-cell" style="color:#9ca3af;">Monthly</td>
+          <td class="center-cell" style="color:#9ca3af;">—</td>
+          <td class="center-cell" style="color:#9ca3af;">—</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- Variable Rate Section -->
+    <div class="rate-section-label variable">📈 Variable Rate Plans</div>
+    <table class="rate-table">
+      <thead>
+        <tr>
+          <th>Supplier</th>
+          <th class="center">Rate ($/ccf)</th>
+          <th class="center">Term</th>
+          <th class="center">Early Term Fee</th>
+          <th class="center">Monthly Fee</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="var-row promo-row">
+          <td>
+            <strong>Kratos Gas &amp; Power</strong><br>
+            <span class="flag-promo">⚠️ 1-month intro rate only — price changes after Month 1</span>
+          </td>
+          <td class="center-cell"><span class="price">$0.459</span><span class="savings-pill">Save 57%</span></td>
+          <td class="center-cell">1 mo.</td>
+          <td class="center-cell fee-free">$0</td>
+          <td class="center-cell fee-free">$0</td>
+        </tr>
+        <tr class="var-row">
+          <td>
+            <strong>American Power &amp; Gas of Ohio</strong><br>
+            <span class="flag-intro">ℹ️ Introductory price — verify rate after intro period</span>
+          </td>
+          <td class="center-cell"><span class="price">$0.519</span><span class="savings-pill">Save 52%</span></td>
+          <td class="center-cell">24 mo.</td>
+          <td class="center-cell fee-free">$0</td>
+          <td class="center-cell fee-free">$0</td>
+        </tr>
+        <tr class="var-row">
+          <td>
+            <strong>Mercury Energy Marketing</strong><br>
+            <span style="font-size:0.75rem;color:#6b7280;">Month-to-month, no commitment</span>
+          </td>
+          <td class="center-cell"><span class="price">$0.525</span><span class="savings-pill">Save 51%</span></td>
+          <td class="center-cell">1 mo.</td>
+          <td class="center-cell fee-free">$0</td>
+          <td class="center-cell fee-free">$0</td>
+        </tr>
+        <tr class="var-row">
+          <td>
+            <strong>Ohio Gas &amp; Electric</strong><br>
+            <span style="font-size:0.75rem;color:#6b7280;">No-commitment plan + $50/mo reward dollars</span>
+          </td>
+          <td class="center-cell"><span class="price">$0.639</span><span class="savings-pill">Save 40%</span></td>
+          <td class="center-cell">None</td>
+          <td class="center-cell fee-free">$0</td>
+          <td class="center-cell fee-free">$0</td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="more-row"><table style="width:100%"><tr><td>View all 70+ Columbia Gas suppliers on PUCO Energy Choice →</td></tr></table></div>
+  </div>
+
+  <p class="disclaimer">Rate data sourced from PUCO Energy Choice Ohio. Rates are updated daily but may not reflect real-time changes. Always verify current rates, terms, and fees directly with suppliers before enrolling. Savings estimates based on default SCO rate; actual savings depend on your usage and the rate after any intro period.</p>
+</section>
+
+<!-- HOW YOUR BILL WORKS -->
+<div class="bill-section">
+  <div class="bill-inner">
+    <h2>How your natural gas bill actually works</h2>
+    <p class="subtitle">Most people look at the total and never think about the two parts inside. Understanding them is the first step to saving money.</p>
+
+    <div class="bill-insight">
+      <div class="bill-insight-icon">💡</div>
+      <div class="bill-insight-text">
+        <h4>The key thing to know: your bill has two parts — and only one of them can change.</h4>
+        <p>Columbia Gas charges you for <strong>delivery</strong> (getting gas to your house — this is fixed no matter what) and <strong>supply</strong> (the actual gas itself — this is what you can shop around for). Switching to a competing supplier never affects your delivery service. Columbia Gas still maintains your pipes and responds to emergencies. You just pay a different company for the gas commodity.</p>
+      </div>
+    </div>
+
+    <div class="bill-columns">
+
+      <!-- DELIVERY COLUMN -->
+      <div class="bill-col delivery">
+        <div class="bill-col-header">
+          <div>🏠 Delivery — Columbia Gas of Ohio</div>
+          <span class="badge-lock">FIXED — Can't change this</span>
+        </div>
+        <div class="bill-line">
+          <div>
+            <div class="bill-line-name">Fixed Monthly Delivery Charge</div>
+            <div class="bill-line-sub">Covers maintaining your gas lines and meter. Same amount every month regardless of usage.</div>
+          </div>
+          <div class="bill-line-amount">$39.31</div>
+        </div>
+        <div class="bill-line">
+          <div>
+            <div class="bill-line-name">Usage Based Charges</div>
+            <div class="bill-line-sub">Per-ccf distribution charge. Scales with how much gas you use.</div>
+          </div>
+          <div class="bill-line-amount">$12.86</div>
+        </div>
+        <div class="bill-line">
+          <div>
+            <div class="bill-line-name">Infrastructure Riders</div>
+            <div class="bill-line-sub">State-mandated charges for replacing aging pipeline infrastructure across Ohio.</div>
+          </div>
+          <div class="bill-line-amount">$12.80</div>
+        </div>
+        <div class="bill-line">
+          <div>
+            <div class="bill-line-name">Gross Receipts Tax (4.987%)</div>
+            <div class="bill-line-sub">Ohio state tax on utility revenue. Applied to delivery charges.</div>
+          </div>
+          <div class="bill-line-amount">$3.24</div>
+        </div>
+        <div class="bill-total">
+          <span>Delivery Subtotal</span>
+          <span>$68.21</span>
+        </div>
+      </div>
+
+      <!-- SUPPLY COLUMN -->
+      <div class="bill-col supply">
+        <div class="bill-col-header">
+          <div>⚡ Supply — Your Chosen Supplier</div>
+          <span class="badge-change">YOU CAN SHOP THIS</span>
+        </div>
+        <div class="bill-line">
+          <div>
+            <div class="bill-line-name">Gas Supply Cost</div>
+            <div class="bill-line-sub">Example: 118 ccf × $0.499/ccf (Utility Gas and Power rate)</div>
+          </div>
+          <div class="bill-line-amount">$58.88</div>
+        </div>
+        <div class="bill-line">
+          <div>
+            <div class="bill-line-name">Sales Tax on Supply</div>
+            <div class="bill-line-sub">Applied to the gas commodity cost only.</div>
+          </div>
+          <div class="bill-line-amount">$4.71</div>
+        </div>
+        <div class="bill-total">
+          <span>Supply Subtotal</span>
+          <span>$63.59</span>
+        </div>
+        <div style="padding:12px 20px;font-size:0.78rem;background:#f0fdf4;border-top:1px solid #bbf7d0;">
+          <strong style="color:#166534;">If still on default SCO rate ($1.071/ccf):</strong><br>
+          118 ccf × $1.071 = $126.38 + tax ≈ <strong style="color:#dc2626;">$133.88</strong><br>
+          vs. $63.59 on this plan — <strong style="color:#16a34a;">saving ~$70 this month alone</strong>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Riders explainer -->
+    <h3 style="font-size:1.1rem;font-weight:800;margin-bottom:14px;color:#1e3a8a;">What are those "rider" charges?</h3>
+    <p style="font-size:0.88rem;color:#555;margin-bottom:16px;line-height:1.6;">You'll see several line items labeled "Rider" on your Columbia Gas bill. These are state-regulated fees that fund specific infrastructure programs. You cannot opt out of them — every Columbia Gas customer pays them.</p>
+    <div class="riders-grid">
+      <div class="rider-card">
+        <h5>Infrastructure Replacement Program Rider</h5>
+        <p>Funds replacement of older cast iron and bare steel gas distribution pipes across Ohio.</p>
+        <div class="rider-amount">Typical charge: ~$5.33/mo</div>
+      </div>
+      <div class="rider-card">
+        <h5>PHMSA Infrastructure Rider</h5>
+        <p>Federal pipeline safety compliance (Pipeline and Hazardous Materials Safety Administration requirements).</p>
+        <div class="rider-amount">Typical charge: ~$0.46/mo</div>
+      </div>
+      <div class="rider-card">
+        <h5>Capital Expenditure Program Rider</h5>
+        <p>Covers major capital improvements to the gas distribution system approved by PUCO.</p>
+        <div class="rider-amount">Typical charge: ~$6.14/mo</div>
+      </div>
+      <div class="rider-card">
+        <h5>Infrastructure Development Rider</h5>
+        <p>Funds new gas line extensions and system expansion projects.</p>
+        <div class="rider-amount">Typical charge: ~$0.87/mo</div>
+      </div>
+    </div>
+
+    <div style="margin-top:20px;padding:16px 20px;background:#f8f9fa;border-radius:10px;font-size:0.83rem;color:#555;line-height:1.6;border-left:3px solid #d1d5db;">
+      <strong>Remember:</strong> Riders are billed by Columbia Gas regardless of which supplier provides your gas. Switching suppliers does not eliminate or change riders. The only line item that changes when you switch is the <strong>Supply</strong> section.
+    </div>
+
+  </div>
+</div>
+
+<!-- HOW IT WORKS -->
+<section style="background:#f0f4f8; margin: 0; max-width:100%; padding: 56px 24px;">
+  <div style="max-width:1000px; margin:0 auto;">
+    <h2>How Ohio Rate Watch works</h2>
+    <p class="subtitle">Simple, free, and takes 30 seconds to set up.</p>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <h4>Enter your email &amp; zip code</h4>
+        <p>We figure out which Ohio utility serves your area and start watching rates for you automatically.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <h4>We monitor every day</h4>
+        <p>We check all PUCO-certified supplier rates daily. When something significant changes — up or down — we flag it.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <h4>You get a plain-English email</h4>
+        <p>No jargon. Just: "Here's what you're paying, here's what you could pay, here's how to switch if you want to."</p>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <h4>You decide — always</h4>
+        <p>We never switch your service for you. We just keep you informed so you can act when the timing is right.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- MISSION -->
+<section>
+  <div class="mission">
+    <h3>Why we built this</h3>
+    <p>Ohio deregulated its natural gas market so residents could benefit from competition. But most people — especially older homeowners — have no idea the PUCO Energy Choice program even exists. They stay on the utility's default rate indefinitely, often paying twice what they need to. Ohio Rate Watch exists to change that. The information is public. We just make it useful.</p>
+  </div>
+</section>
+
+<!-- FOOTER CTA -->
+<div class="footer-cta">
+  <h2>Ready to stop overpaying?</h2>
+  <p>Join free. Get notified the moment a better rate is available for your area.</p>
+  <form class="signup-form" id="footer-form" style="max-width:480px; margin:0 auto;">
+    <input type="email" id="footer-email" placeholder="Your email address" required>
+    <input type="text" class="zip" id="footer-zip" placeholder="Zip" maxlength="5">
+    <button type="submit" id="footer-btn">Get Free Alerts →</button>
+  </form>
+  <div id="footer-msg" style="margin-top:12px;font-weight:600;"></div>
+</div>
+
+<!-- 811 CALLOUT -->
+<div class="callout-811">
+  <div class="num-811">811</div>
+  <div class="callout-811-text">
+    <strong>Always call 811 before you dig.</strong><br>
+    Planning a project in your yard? Call Ohio OUPS (Ohio Utility Protection Service) at 811 at least two business days before digging — they'll mark underground utility lines for free. Know what's below.
+  </div>
+</div>
+
+<footer>
+  <strong>OhioRateWatch.com</strong> · A project of EJ Systems LLC · Cleveland, Ohio · <a href="tel:8334317283">833.431.RATE</a><br>
+  <br>
+  Rate data sourced from <a href="https://www.energychoice.ohio.gov" target="_blank">PUCO Energy Choice Ohio</a>. Not affiliated with any supplier, Columbia Gas, or any utility company.<br>
+  Always verify current rates, terms, and fees directly with suppliers before switching service.<br>
+  <br>
+  Questions or concerns? Contact the <a href="https://www.puco.ohio.gov" target="_blank">Public Utilities Commission of Ohio (PUCO)</a> at 1-800-686-7826
+  or the <a href="https://www.pickocc.org" target="_blank">Ohio Consumers' Counsel (OCC)</a> at 1-877-742-5622.
+</footer>
+
+<script>
+  async function subscribe(email, zip, btn, msgEl, isHero) {
+    btn.disabled = true;
+    btn.textContent = 'Signing up...';
+    msgEl.textContent = '';
+    msgEl.className = '';
+    try {
+      const res = await fetch('/api/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, zip }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        msgEl.textContent = "✓ You're on the list! Check your email for confirmation.";
+        msgEl.className = isHero ? 'form-success' : '';
+        if (!isHero) msgEl.style.color = '#a5d6a7';
+        btn.closest('form').reset();
+      } else {
+        throw new Error(data.error || 'Something went wrong');
+      }
+    } catch (err) {
+      msgEl.textContent = '✗ ' + (err.message || 'Please try again.');
+      msgEl.className = isHero ? 'form-error' : '';
+      if (!isHero) msgEl.style.color = '#ef9a9a';
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Get Free Alerts →';
+    }
+  }
+
+  document.getElementById('hero-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    subscribe(document.getElementById('hero-email').value, document.getElementById('hero-zip').value, document.getElementById('hero-btn'), document.getElementById('hero-msg'), true);
+  });
+  document.getElementById('footer-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    subscribe(document.getElementById('footer-email').value, document.getElementById('footer-zip').value, document.getElementById('footer-btn'), document.getElementById('footer-msg'), false);
+  });
+</script>
+</body>
+</html>

@@ -93,32 +93,86 @@ async function fetchRatePage(category, territoryId, rateCode) {
   }
 
   // --- Parse supplier rate table ---
-  // Structure: <td><span class='retail-title'>NAME...</span>...offer details...</td><td>PRICE</td><td>RateType</td>...
-  // Rows are separated by <span class='retail-title'>
-  const rowPattern = /<span class='retail-title'>([\s\S]*?)<\/span>[\s\S]*?<\/td>\s*<td[^>]*>\s*([\d.]+)\s*<\/td>\s*<td[^>]*>([\s\S]*?)<\/td>/g;
+  // Each row: Company | Price | RateType | Renewable% | IntroPrice | Term | ETF | MonthlyFee | Promo
+  // Strategy: split into <tr> blocks, parse each TD within rows that have retail-title spans.
+  const trPattern = /<tr[^>]*>([\s\S]*?)<\/tr>/g;
+  let trMatch;
 
-  let rm;
-  while ((rm = rowPattern.exec(html)) !== null) {
-    // Company name is the first text node before the first <p>
-    const rawName = rm[1].replace(/<p[\s\S]*$/, '').replace(/<[^>]+>/g, '').trim();
-    const price = parseFloat(rm[2]);
-    const rateTypeHtml = rm[3];
+  while ((trMatch = trPattern.exec(html)) !== null) {
+    const row = trMatch[1];
+    if (!row.includes("retail-title")) continue;
 
-    // Rate type from the next <td>
-    const rateType = /fixed/i.test(rateTypeHtml) ? 'fixed'
-      : /variable/i.test(rateTypeHtml) ? 'variable'
+    // Extract all TDs from the row
+    const tdPattern = /<td[^>]*>([\s\S]*?)<\/td>/g;
+    const tds = [];
+    let tdm;
+    while ((tdm = tdPattern.exec(row)) !== null) {
+      tds.push(tdm[1]);
+    }
+
+    // TD layout (0-indexed): 0=checkbox, 1=company, 2=price, 3=rateType, 4=renewable, 5=introPrice, 6=term, 7=ETF, 8=monthlyFee, 9=promo
+    if (tds.length < 8) continue;
+
+    const strip = (s) => s.replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
+
+    // Company name: everything before the first <p> inside the retail-title span
+    const nameMatch = tds[1].match(/<span[^>]*class='retail-title'>([\s\S]*?)<\/span>/);
+    if (!nameMatch) continue;
+    const rawName = nameMatch[1].replace(/<p[\s\S]*$/, '').replace(/<[^>]+>/g, '').trim();
+
+    // Offer details text (optional)
+    const offerMatch = tds[1].match(/showTextInDialog\("Offer Details","([^"]*)"\)/);
+    const offerDetails = offerMatch ? offerMatch[1].trim() : null;
+
+    const price = parseFloat(strip(tds[2]));
+    const rateTypeText = strip(tds[3]);
+    const rateType = /fixed/i.test(rateTypeText) ? 'fixed'
+      : /variable/i.test(rateTypeText) ? 'variable'
       : 'unknown';
 
-    // Extract term length from the row (look ahead a bit)
-    const rowContext = html.substring(rm.index, rm.index + 800);
-    const termMatch = rowContext.match(/(\d+)\s*(?:mo\.|months?)/i);
+    const renewableRaw = strip(tds[4]);
+    const renewablePct = parseFloat(renewableRaw) || 0;
+
+    const introPrice = /yes/i.test(strip(tds[5]));
+
+    const termText = strip(tds[6]);
+    const termMatch = termText.match(/(\d+)/);
     const termMonths = termMatch ? parseInt(termMatch[1], 10) : null;
+
+    // ETF: tds[7] — could be "$0", "$25", "No", a dollar amount
+    const etfRaw = strip(tds[7]);
+    let earlyTerminationFee = null;
+    if (/no/i.test(etfRaw)) {
+      earlyTerminationFee = 0;
+    } else {
+      const etfMatch = etfRaw.match(/\$?([\d.]+)/);
+      earlyTerminationFee = etfMatch ? parseFloat(etfMatch[1]) : null;
+    }
+
+    // Monthly fee: tds[8]
+    const monthlyFeeRaw = strip(tds[8]);
+    let monthlyFee = null;
+    if (/no/i.test(monthlyFeeRaw) || monthlyFeeRaw === '$0') {
+      monthlyFee = 0;
+    } else {
+      const mfMatch = monthlyFeeRaw.match(/\$?([\d.]+)/);
+      monthlyFee = mfMatch ? parseFloat(mfMatch[1]) : null;
+    }
+
+    // Promo offers: tds[9] if it exists
+    const hasPromo = tds[9] ? /yes/i.test(strip(tds[9])) : false;
 
     result.suppliers.push({
       name: rawName,
       price: isNaN(price) ? null : price,
       rateType,
       termMonths,
+      renewablePct,
+      introPrice,
+      earlyTerminationFee,
+      monthlyFee,
+      hasPromo,
+      offerDetails: offerDetails || null,
     });
   }
 
