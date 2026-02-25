@@ -1,20 +1,21 @@
 /**
  * Energy Choice Ohio Scraper — Ohio Rate Watch
  * 
- * Scrapes energychoice.ohio.gov for current retail supplier rates.
- * Plain curl/fetch works — no Playwright needed, data is in HTML.
+ * Fetches supplier data via PUCO's hidden XML export (ASP.NET PostBack).
+ * Much more reliable than HTML table parsing.
  * 
  * Covers all Ohio utility territories and rate codes for:
  *   - Natural Gas (4 territories × 2 rate codes)
- *   - Electric (territories TBD)
+ *   - Electric (territories discovered dynamically)
  * 
  * Usage: node energy-choice-scraper.js
  * Output: JSON array of current rate snapshots
  */
 
+import { XMLParser } from 'fast-xml-parser';
+
 const BASE_URL = 'https://www.energychoice.ohio.gov';
 
-// All known Natural Gas territories from the category page
 const GAS_TERRITORIES = [
   { id: 1, name: 'Columbia Gas of Ohio (East)' },
   { id: 8, name: 'Columbia Gas of Ohio (West)' },
@@ -22,11 +23,7 @@ const GAS_TERRITORIES = [
   { id: 11, name: 'Dominion/Enbridge Gas Ohio' },
 ];
 
-const ELECTRIC_TERRITORIES = [
-  // Will be populated after scraping the electric category page
-];
-
-const RATE_CODES = [1, 2]; // Residential (1) and Small Commercial (2)
+const RATE_CODES = [1, 2];
 
 const HEADERS = {
   'User-Agent':
@@ -36,34 +33,42 @@ const HEADERS = {
   'Accept-Language': 'en-US,en;q=0.9',
 };
 
+const xmlParser = new XMLParser({
+  ignoreAttributes: false,
+  attributeNamePrefix: '@_',
+});
+
 /**
- * Fetch a single Energy Choice comparison page and parse it.
+ * Parse a dollar string like "$150.00" or "$0.00" into a number.
+ */
+function parseDollar(s) {
+  if (s == null) return null;
+  const str = String(s).replace(/[$,]/g, '').trim();
+  if (/no/i.test(str)) return 0;
+  const n = parseFloat(str);
+  return isNaN(n) ? null : n;
+}
+
+/**
+ * Fetch a single Energy Choice comparison page via XML export.
  */
 async function fetchRatePage(category, territoryId, rateCode) {
-  const url = `${BASE_URL}/ApplesToApplesComparision.aspx?Category=${category}&TerritoryId=${territoryId}&RateCode=${rateCode}`;
+  const pageUrl = `${BASE_URL}/ApplesToApplesComparision.aspx?Category=${category}&TerritoryId=${territoryId}&RateCode=${rateCode}`;
 
-  const res = await fetch(url, { headers: HEADERS });
-  if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
-  const html = await res.text();
+  // Step 1: GET the page to obtain ASP.NET state tokens + cookies
+  const r1 = await fetch(pageUrl, { headers: HEADERS });
+  if (!r1.ok) throw new Error(`HTTP ${r1.status} for ${pageUrl}`);
+  const cookie = r1.headers.get('set-cookie') || '';
+  const html = await r1.text();
 
-  const result = {
-    source: 'EnergyChoiceOhio',
-    url,
-    category,
-    territoryId,
-    rateCode,
-    scrapedAt: new Date().toISOString(),
-    defaultRate: null,      // SCO/standard offer rate
-    defaultRateText: null,  // Raw effective date text
-    suppliers: [],
-  };
+  const vs = html.match(/id="__VIEWSTATE" value="([^"]+)"/)?.[1] || '';
+  const evv = html.match(/id="__EVENTVALIDATION" value="([^"]+)"/)?.[1] || '';
+  const vsg = html.match(/id="__VIEWSTATEGENERATOR" value="([^"]+)"/)?.[1] || '';
 
-  // Decode HTML entities
-  const decode = (s) => s.replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').trim();
-
-  // --- Parse default/SCO rate from narrative text ---
-  // The SCO rate is split across multiple nested HTML tags (strong/span styling) — strip tags first
-  // Extract the relevant section around "SCO rate is" or "Standard Offer"
+  // Parse SCO/default rate from HTML (best-effort — not always present)
+  let defaultRate = null;
+  let defaultRateText = null;
+  
   const scoSection = (() => {
     const idx = html.indexOf('SCO rate is');
     if (idx === -1) return '';
@@ -73,110 +78,132 @@ async function fetchRatePage(category, territoryId, rateCode) {
       .replace(/&#\d+;/g, ' ')
       .replace(/\s+/g, ' ');
   })();
-
   const scoMatch = scoSection.match(/\$([\d.]+)\s*per\s*ccf\s*-\s*Effective\s*([^.]+)/i);
   if (scoMatch) {
-    result.defaultRate = parseFloat(scoMatch[1]);
-    result.defaultRateText = decode(scoMatch[2]);
+    defaultRate = parseFloat(scoMatch[1]);
+    defaultRateText = scoMatch[2].trim();
   }
 
-  // Also look for kWh pricing (electric)
-  const kwhSection = (() => {
-    const idx = html.indexOf('standard offer');
-    if (idx === -1) return '';
-    return html.substring(idx, idx + 800).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
-  })();
-  const kwhMatch = kwhSection.match(/\$([\d.]+)\s*per\s*kWh\s*-?\s*Effective\s*([^.]+)/i);
-  if (kwhMatch) {
-    result.defaultRate = parseFloat(kwhMatch[1]);
-    result.defaultRateText = decode(kwhMatch[2]);
-  }
-
-  // --- Parse supplier rate table ---
-  // Each row: Company | Price | RateType | Renewable% | IntroPrice | Term | ETF | MonthlyFee | Promo
-  // Strategy: split into <tr> blocks, parse each TD within rows that have retail-title spans.
-  const trPattern = /<tr[^>]*>([\s\S]*?)<\/tr>/g;
-  let trMatch;
-
-  while ((trMatch = trPattern.exec(html)) !== null) {
-    const row = trMatch[1];
-    if (!row.includes("retail-title")) continue;
-
-    // Extract all TDs from the row
-    const tdPattern = /<td[^>]*>([\s\S]*?)<\/td>/g;
-    const tds = [];
-    let tdm;
-    while ((tdm = tdPattern.exec(row)) !== null) {
-      tds.push(tdm[1]);
+  // Electric PTC fallback
+  if (defaultRate === null) {
+    const kwhSection = (() => {
+      const idx = html.indexOf('standard offer');
+      if (idx === -1) return '';
+      return html.substring(idx, idx + 800).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
+    })();
+    const kwhMatch = kwhSection.match(/\$([\d.]+)\s*per\s*kWh\s*-?\s*Effective\s*([^.]+)/i);
+    if (kwhMatch) {
+      defaultRate = parseFloat(kwhMatch[1]);
+      defaultRateText = kwhMatch[2].trim();
     }
+  }
 
-    // TD layout (0-indexed): 0=checkbox, 1=company, 2=price, 3=rateType, 4=renewable, 5=introPrice, 6=term, 7=ETF, 8=monthlyFee, 9=promo
-    if (tds.length < 8) continue;
+  // Step 2: POST to trigger XML export
+  const body = new URLSearchParams({
+    '__EVENTTARGET': 'ctl00$ContentPlaceHolder1$lnkExportToExcel',
+    '__EVENTARGUMENT': '',
+    '__VIEWSTATE': vs,
+    '__VIEWSTATEGENERATOR': vsg,
+    '__EVENTVALIDATION': evv,
+  });
 
-    const strip = (s) => s.replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
+  const r2 = await fetch(pageUrl, {
+    method: 'POST',
+    headers: {
+      ...HEADERS,
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'Cookie': cookie,
+      'Referer': pageUrl,
+    },
+    body: body.toString(),
+  });
 
-    // Company name: everything before the first <p> inside the retail-title span
-    const nameMatch = tds[1].match(/<span[^>]*class='retail-title'>([\s\S]*?)<\/span>/);
-    if (!nameMatch) continue;
-    const rawName = nameMatch[1].replace(/<p[\s\S]*$/, '').replace(/<[^>]+>/g, '').trim();
+  if (!r2.ok) throw new Error(`XML export HTTP ${r2.status} for ${pageUrl}`);
+  const xml = await r2.text();
 
-    // Offer details text (optional)
-    const offerMatch = tds[1].match(/showTextInDialog\("Offer Details","([^"]*)"\)/);
-    const offerDetails = offerMatch ? offerMatch[1].trim() : null;
+  // Step 3: Parse XML
+  let offers;
+  try {
+    const parsed = xmlParser.parse(xml);
+    if (!parsed.Offers?.Offer) {
+      return {
+        source: 'EnergyChoiceOhio',
+        url: pageUrl,
+        category,
+        territoryId,
+        rateCode,
+        scrapedAt: new Date().toISOString(),
+        defaultRate,
+        defaultRateText,
+        suppliers: [],
+      };
+    }
+    offers = Array.isArray(parsed.Offers.Offer) ? parsed.Offers.Offer : [parsed.Offers.Offer];
+  } catch (err) {
+    console.error(`[EnergyChoice] XML parse error for ${category} territory=${territoryId} rc=${rateCode}: ${err.message}`);
+    return {
+      source: 'EnergyChoiceOhio',
+      url: pageUrl,
+      category,
+      territoryId,
+      rateCode,
+      scrapedAt: new Date().toISOString(),
+      defaultRate,
+      defaultRateText,
+      suppliers: [],
+      error: `XML parse failed: ${err.message}`,
+    };
+  }
 
-    const price = parseFloat(strip(tds[2]));
-    const rateTypeText = strip(tds[3]);
-    const rateType = /fixed/i.test(rateTypeText) ? 'fixed'
-      : /variable/i.test(rateTypeText) ? 'variable'
+  // Step 4: Map offers to supplier objects
+  const suppliers = offers.map(offer => {
+    const info = offer.SupplierInfo || {};
+    const links = offer.SupplierLinks || {};
+    const intro = offer.IntroductoryOffer || {};
+    const promo = offer.PromotionalOffer || {};
+
+    const price = parseFloat(offer.Price);
+    const rateTypeRaw = String(offer.RateType || '');
+    const rateType = /fixed/i.test(rateTypeRaw) ? 'fixed'
+      : /variable/i.test(rateTypeRaw) ? 'variable'
       : 'unknown';
 
-    const renewableRaw = strip(tds[4]);
-    const renewablePct = parseFloat(renewableRaw) || 0;
+    const termMonths = parseInt(offer.TermLength, 10) || null;
 
-    const introPrice = /yes/i.test(strip(tds[5]));
-
-    const termText = strip(tds[6]);
-    const termMatch = termText.match(/(\d+)/);
-    const termMonths = termMatch ? parseInt(termMatch[1], 10) : null;
-
-    // ETF: tds[7] — could be "$0", "$25", "No", a dollar amount
-    const etfRaw = strip(tds[7]);
-    let earlyTerminationFee = null;
-    if (/no/i.test(etfRaw)) {
-      earlyTerminationFee = 0;
-    } else {
-      const etfMatch = etfRaw.match(/\$?([\d.]+)/);
-      earlyTerminationFee = etfMatch ? parseFloat(etfMatch[1]) : null;
-    }
-
-    // Monthly fee: tds[8]
-    const monthlyFeeRaw = strip(tds[8]);
-    let monthlyFee = null;
-    if (/no/i.test(monthlyFeeRaw) || monthlyFeeRaw === '$0') {
-      monthlyFee = 0;
-    } else {
-      const mfMatch = monthlyFeeRaw.match(/\$?([\d.]+)/);
-      monthlyFee = mfMatch ? parseFloat(mfMatch[1]) : null;
-    }
-
-    // Promo offers: tds[9] if it exists
-    const hasPromo = tds[9] ? /yes/i.test(strip(tds[9])) : false;
-
-    result.suppliers.push({
-      name: rawName,
+    return {
+      name: info['@_SupplierCompanyName'] || 'Unknown',
+      companyName: info['@_CompanyName'] || null,
       price: isNaN(price) ? null : price,
       rateType,
       termMonths,
-      renewablePct,
-      introPrice,
-      earlyTerminationFee,
-      monthlyFee,
-      hasPromo,
-      offerDetails: offerDetails || null,
-    });
-  }
+      renewablePct: 0, // Not in XML export; default 0
+      introPrice: /yes/i.test(intro['@_IsIntroductoryOffer'] || ''),
+      earlyTerminationFee: parseDollar(offer.EarlyTerminationFee),
+      monthlyFee: parseDollar(offer.MonthlyFee),
+      hasPromo: /yes/i.test(promo['@_IsPromotionalOffer'] || ''),
+      offerDetails: offer.OfferDetails || null,
+      promoDetails: promo['@_Details'] || null,
+      introDetails: intro['@_Details'] || null,
+      // New fields from XML
+      phone: info['@_SupplierPhone'] || null,
+      website: info['@_SupplierWebSiteUrl'] || null,
+      signUpUrl: links['@_SignUpNowURL'] || null,
+      termsUrl: links['@_TermsOfServiceURL'] || null,
+      offerId: offer['@_ID'] || null,
+    };
+  });
 
-  return result;
+  return {
+    source: 'EnergyChoiceOhio',
+    url: pageUrl,
+    category,
+    territoryId,
+    rateCode,
+    scrapedAt: new Date().toISOString(),
+    defaultRate,
+    defaultRateText,
+    suppliers,
+  };
 }
 
 /**
@@ -198,11 +225,10 @@ async function discoverElectricTerritories() {
  * Scrape all Ohio territory/rate combinations.
  */
 async function scrapeAllRates() {
-  console.error('[EnergyChoice] Starting full Ohio rate scrape...');
+  console.error('[EnergyChoice] Starting full Ohio rate scrape (XML export)...');
 
   const allResults = [];
 
-  // Discover electric territories dynamically
   const electricTerritories = await discoverElectricTerritories();
   console.error(`[EnergyChoice] Found ${electricTerritories.length} electric territories`);
 
@@ -235,25 +261,22 @@ async function scrapeAllRates() {
 
 /**
  * Detect rate changes by comparing new snapshot with stored baseline.
- * Pass in previous results (loaded from disk) and new results.
  */
 function detectChanges(previous, current) {
   const changes = [];
 
   for (const curr of current) {
-    const key = `${curr.category}:${curr.territoryId}:${curr.rateCode}`;
     const prev = previous.find(
       (p) => p.category === curr.category && p.territoryId === curr.territoryId && p.rateCode === curr.rateCode
     );
 
     if (!prev) continue;
 
-    // Check default rate change
     if (prev.defaultRate !== null && curr.defaultRate !== null && prev.defaultRate !== curr.defaultRate) {
       const changePct = ((curr.defaultRate - prev.defaultRate) / prev.defaultRate * 100).toFixed(2);
       changes.push({
         type: 'default_rate',
-        key,
+        key: `${curr.category}:${curr.territoryId}:${curr.rateCode}`,
         territory: curr.territoryName || `Territory ${curr.territoryId}`,
         category: curr.category,
         prevRate: prev.defaultRate,
@@ -264,16 +287,15 @@ function detectChanges(previous, current) {
       });
     }
 
-    // Check supplier rate changes
     for (const currSupplier of curr.suppliers) {
-      const prevSupplier = prev.suppliers?.find((s) => s.name === currSupplier.name);
+      const prevSupplier = prev.suppliers?.find((s) => s.name === currSupplier.name && s.termMonths === currSupplier.termMonths && s.rateType === currSupplier.rateType);
       if (!prevSupplier || prevSupplier.price === null || currSupplier.price === null) continue;
 
       if (prevSupplier.price !== currSupplier.price) {
         const changePct = ((currSupplier.price - prevSupplier.price) / prevSupplier.price * 100).toFixed(2);
         changes.push({
           type: 'supplier_rate',
-          key,
+          key: `${curr.category}:${curr.territoryId}:${curr.rateCode}`,
           territory: curr.territoryName || `Territory ${curr.territoryId}`,
           category: curr.category,
           supplier: currSupplier.name,
@@ -289,9 +311,7 @@ function detectChanges(previous, current) {
   return changes;
 }
 
-// CLI entry point (only runs when executed directly, not when imported)
-// Node.js v25 has strict TLS by default — energychoice.ohio.gov uses an intermediate cert
-// that the built-in CA store doesn't include. Use --use-system-ca or set NODE_TLS_REJECT_UNAUTHORIZED=0 for dev.
+// CLI entry point
 const isMain = process.argv[1] && import.meta.url.endsWith(process.argv[1].replace(/\\/g, '/'));
 if (isMain || process.argv[1]?.includes('energy-choice-scraper')) {
   const results = await scrapeAllRates();

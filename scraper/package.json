@@ -9,6 +9,7 @@
     "test:puco": "node puco-scraper.js --days 7"
   },
   "dependencies": {
+    "fast-xml-parser": "^5.4.1",
     "playwright": "^1.41.0",
     "playwright-extra": "^4.3.6",
     "puppeteer-extra-plugin-stealth": "^2.11.2"
