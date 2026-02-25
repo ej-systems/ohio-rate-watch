@@ -8,11 +8,14 @@ import http from 'http';
 import { URL } from 'url';
 import fs from 'fs';
 import path from 'path';
-import { getSCOHistory, getSupplierHistory, getSummary } from './lib/history-store.js';
+import { fileURLToPath } from 'url';
+import Database from 'better-sqlite3';
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const PORT = process.env.PORT || 3001;
 const LOG_FILE = '/var/log/ratewatch/signups.csv';
+const DB_PATH = path.join(__dirname, 'data', 'rates-history.db');
 
 if (!RESEND_API_KEY) {
   console.error('ERROR: RESEND_API_KEY env var required');
@@ -23,6 +26,15 @@ if (!RESEND_API_KEY) {
 fs.mkdirSync(path.dirname(LOG_FILE), { recursive: true });
 if (!fs.existsSync(LOG_FILE)) {
   fs.writeFileSync(LOG_FILE, 'timestamp,email,zip\n');
+}
+
+// Lazy DB connection for chart data
+let _db;
+function getDb() {
+  if (!_db) {
+    _db = new Database(DB_PATH, { readonly: true });
+  }
+  return _db;
 }
 
 function corsHeaders() {
@@ -108,12 +120,81 @@ function isRateLimited(ip) {
   return false;
 }
 
+/**
+ * Build chart data from real DB queries.
+ * Returns { columbiaGasSco, enbridgeGasSco, centerpointSco, henryHub, bestFixed, events }
+ */
+function buildChartData() {
+  const db = getDb();
+
+  // Helper: query rate_history for a utility SCO series
+  function getScoSeries(territory_id) {
+    return db.prepare(`
+      SELECT strftime('%Y-%m', date) as month, rate
+      FROM rate_history
+      WHERE territory_id = ? AND type = 'sco'
+      ORDER BY date ASC
+    `).all(territory_id).map(r => ({ date: r.month, value: r.rate }));
+  }
+
+  // Henry Hub: monthly avg price ($/MMBtu) from rate_snapshots, stored as-is
+  // Divide by 10 to convert to $/CCF for consistent scale
+  const henryHub = db.prepare(`
+    SELECT strftime('%Y-%m', scraped_at) as month,
+           ROUND(AVG(price) / 10.0, 4) as value
+    FROM rate_snapshots
+    WHERE supplier_name = 'Henry Hub Spot Price'
+      AND price IS NOT NULL
+    GROUP BY month
+    ORDER BY month ASC
+  `).all().map(r => ({ date: r.month, value: r.value }));
+
+  // Best fixed rate: min fixed price today across all territories
+  const bestFixedRow = db.prepare(`
+    SELECT MIN(price) as best
+    FROM rate_snapshots
+    WHERE rate_type = 'fixed'
+      AND price IS NOT NULL
+      AND price > 0
+      AND scraped_at >= datetime('now', '-7 days')
+  `).get();
+  const bestFixed = bestFixedRow?.best ? Math.round(bestFixedRow.best * 1000) / 1000 : 0.499;
+
+  return {
+    columbiaGasSco: getScoSeries(8),
+    enbridgeGasSco: getScoSeries(1),
+    centerpointSco: getScoSeries(11),
+    henryHub,
+    bestFixed,
+    events: [
+      { date: '2021-04', label: 'Post-Uri Spike', icon: '❄️' },
+      { date: '2022-04', label: 'Russia-Ukraine', icon: '💥' },
+      { date: '2022-10', label: 'Storm Elliott', icon: '❄️' },
+      { date: '2025-10', label: 'PUCO RPA Increase', icon: '📋' },
+    ],
+  };
+}
+
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://localhost`);
 
   if (req.method === 'OPTIONS') {
     res.writeHead(204, corsHeaders());
     res.end();
+    return;
+  }
+
+  // Historical chart data endpoint — real PUCO SCO data from DB
+  if (req.method === 'GET' && url.pathname === '/api/history/chart-data') {
+    try {
+      const chartData = buildChartData();
+      res.writeHead(200, corsHeaders());
+      res.end(JSON.stringify(chartData));
+    } catch (err) {
+      console.error('[chart-data] DB error:', err.message);
+      res.writeHead(500, corsHeaders());
+      res.end(JSON.stringify({ error: 'Failed to load chart data' }));
+    }
     return;
   }
 
@@ -155,56 +236,6 @@ const server = http.createServer(async (req, res) => {
         res.end(JSON.stringify({ error: 'Something went wrong, please try again.' }));
       }
     });
-    return;
-  }
-
-  // --- History API endpoints ---
-  if (req.method === 'GET' && url.pathname === '/api/history/sco') {
-    const category = url.searchParams.get('category') || 'NaturalGas';
-    const territoryId = parseInt(url.searchParams.get('territoryId') || '8', 10);
-    const days = parseInt(url.searchParams.get('days') || '30', 10);
-    try {
-      const data = getSCOHistory(category, territoryId, days);
-      res.writeHead(200, corsHeaders());
-      res.end(JSON.stringify(data));
-    } catch (err) {
-      res.writeHead(500, corsHeaders());
-      res.end(JSON.stringify({ error: err.message }));
-    }
-    return;
-  }
-
-  if (req.method === 'GET' && url.pathname === '/api/history/supplier') {
-    const name = url.searchParams.get('name');
-    const territoryId = parseInt(url.searchParams.get('territoryId') || '8', 10);
-    const days = parseInt(url.searchParams.get('days') || '30', 10);
-    if (!name) {
-      res.writeHead(400, corsHeaders());
-      res.end(JSON.stringify({ error: 'name parameter required' }));
-      return;
-    }
-    try {
-      const data = getSupplierHistory(name, territoryId, days);
-      res.writeHead(200, corsHeaders());
-      res.end(JSON.stringify(data));
-    } catch (err) {
-      res.writeHead(500, corsHeaders());
-      res.end(JSON.stringify({ error: err.message }));
-    }
-    return;
-  }
-
-  if (req.method === 'GET' && url.pathname === '/api/history/summary') {
-    const territoryId = parseInt(url.searchParams.get('territoryId') || '8', 10);
-    const days = parseInt(url.searchParams.get('days') || '7', 10);
-    try {
-      const data = getSummary(territoryId, days);
-      res.writeHead(200, corsHeaders());
-      res.end(JSON.stringify(data));
-    } catch (err) {
-      res.writeHead(500, corsHeaders());
-      res.end(JSON.stringify({ error: err.message }));
-    }
     return;
   }
 
