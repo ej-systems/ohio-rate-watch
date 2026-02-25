@@ -155,6 +155,26 @@
   .mission h3 { font-size: 1.1rem; font-weight: 800; margin-bottom: 10px; color: #e65100; }
   .mission p { color: #555; line-height: 1.65; font-size: 0.95rem; }
 
+  /* FAQ / LEARN SECTION */
+  .faq-section { background: #fff; margin: 0; max-width: 100%; padding: 56px 24px; border-top: 1px solid #e5e7eb; }
+  .faq-inner { max-width: 800px; margin: 0 auto; }
+  .faq-inner h2 { font-size: 1.7rem; font-weight: 800; margin-bottom: 8px; color: #1a1a2e; }
+  .faq-inner .subtitle { color: #666; font-size: 1rem; margin-bottom: 32px; }
+  .faq-item { border: 1px solid #e5e7eb; border-radius: 12px; margin-bottom: 10px; overflow: hidden; }
+  .faq-q { display: flex; justify-content: space-between; align-items: center; padding: 18px 22px; cursor: pointer; font-size: 0.95rem; font-weight: 700; color: #111827; background: #fff; user-select: none; gap: 16px; transition: background 0.15s; }
+  .faq-q:hover { background: #f9fafb; }
+  .faq-q .faq-icon { font-size: 1.1rem; color: #1565c0; flex-shrink: 0; transition: transform 0.2s; }
+  .faq-item.open .faq-icon { transform: rotate(45deg); }
+  .faq-a { display: none; padding: 0 22px 18px; font-size: 0.88rem; color: #4b5563; line-height: 1.7; border-top: 1px solid #f3f4f6; background: #fafafa; }
+  .faq-item.open .faq-a { display: block; }
+  .faq-a p { margin-top: 14px; }
+  .faq-a ul { margin: 10px 0 0 18px; }
+  .faq-a li { margin-bottom: 6px; }
+  .faq-tag { display: inline-block; padding: 2px 8px; border-radius: 8px; font-size: 0.68rem; font-weight: 700; margin-left: 8px; vertical-align: middle; }
+  .faq-tag.blue { background: #dbeafe; color: #1e40af; }
+  .faq-tag.orange { background: #ffedd5; color: #c2410c; }
+  .faq-tag.green { background: #dcfce7; color: #166534; }
+
   /* 811 CALLOUT */
   .callout-811 { background: #fff; border-top: 3px solid #e5e7eb; border-bottom: 3px solid #e5e7eb; color: #374151; padding: 24px 32px; display: flex; align-items: center; justify-content: center; gap: 24px; flex-wrap: wrap; font-size: 0.85rem; }
   .callout-811 strong { color: #111827; font-size: 1rem; }
@@ -534,6 +554,141 @@
     </div>
   </div>
 </section>
+
+<!-- FAQ / LEARN SECTION -->
+<div class="faq-section">
+  <div class="faq-inner">
+    <h2>Learn how Ohio energy choice works</h2>
+    <p class="subtitle">Plain-English answers to the questions everyone has before switching suppliers.</p>
+
+    <div class="faq-item">
+      <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">
+        What is the SCO — and why does it matter?
+        <span class="faq-icon">+</span>
+      </div>
+      <div class="faq-a">
+        <p>The <strong>Standard Choice Offer (SCO)</strong> is the default gas supply rate your utility charges if you haven't chosen a competing supplier. It's set monthly by the utility based on wholesale market prices.</p>
+        <p>Most Ohioans are on the SCO without knowing it. Because the SCO adjusts with the market, it can spike significantly — Columbia Gas's SCO jumped 35% in a single month earlier this year, from $0.79/ccf to $1.07/ccf. Competing fixed-rate suppliers were offering $0.49–$0.58/ccf that same month.</p>
+        <p>The SCO is not a bad deal by design — it's just uncompetitive when the market has certified suppliers offering substantially lower rates.</p>
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">
+        What is the PTC (Price to Compare)?
+        <span class="faq-icon">+</span>
+      </div>
+      <div class="faq-a">
+        <p>The <strong>Price to Compare (PTC)</strong> is used for electric customers. It's the equivalent of the SCO for natural gas — the baseline rate from your electric utility that you're trying to beat by choosing a competing electric supplier.</p>
+        <p>For AEP Ohio and FirstEnergy customers, the PTC is published monthly and listed on the PUCO Energy Choice site. When shopping for electric suppliers, look for plans priced below your utility's current PTC.</p>
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">
+        Fixed rate vs. variable rate — which is right for me? <span class="faq-tag blue">Fixed</span><span class="faq-tag orange">Variable</span>
+        <span class="faq-icon">+</span>
+      </div>
+      <div class="faq-a">
+        <p><strong>Fixed rate:</strong> Your price per ccf (or kWh) is locked for the contract term — usually 6, 12, or 24 months. If market prices spike in winter, you're protected. The tradeoff: early termination fees ($50–$150 typical) if you cancel before the term ends.</p>
+        <p><strong>Variable rate:</strong> Your price adjusts month to month with the market. No long commitment, and in off-peak spring/fall months variable rates can be very low. The risk: prices can climb fast in winter. Watch out for <strong>introductory "teaser" rates</strong> — some suppliers advertise a very low price that only applies for the first month, then switches to a market-based variable rate.</p>
+        <p><strong>Rule of thumb:</strong> If you're a high-usage household (cold Ohio winters) and want predictable bills, lock in a fixed rate in late summer before winter demand pushes prices up. If your usage is low and you're comfortable monitoring, a variable month-to-month plan offers flexibility.</p>
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">
+        What is "true cost" — and why do monthly fees matter?
+        <span class="faq-icon">+</span>
+      </div>
+      <div class="faq-a">
+        <p>Some suppliers advertise a low per-ccf rate but charge a monthly fee on top. At face value they look cheap — but once you factor in the fee, the true cost per ccf is higher than it looks.</p>
+        <p><strong>True cost formula:</strong> <code>True cost = Rate + (Monthly fee ÷ your monthly ccf usage)</code></p>
+        <p>Example: A plan at $0.45/ccf with a $9.95/month fee, for a customer using 60 ccf/month:<br>
+        $0.45 + ($9.95 ÷ 60) = $0.45 + $0.166 = <strong>$0.616/ccf true cost</strong> — more expensive than a plan at $0.55/ccf with no fee.</p>
+        <p>Ohio Rate Watch shows both the advertised rate and monthly fee separately so you can calculate your own true cost based on your actual usage.</p>
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">
+        What are all those "rider" charges on my bill? Can I get rid of them by switching?
+        <span class="faq-icon">+</span>
+      </div>
+      <div class="faq-a">
+        <p>Riders are state-regulated fees charged by your utility for infrastructure maintenance programs. Every Ohio utility has them — the names and amounts vary, but the idea is the same.</p>
+        <p>Common Columbia Gas riders:</p>
+        <ul>
+          <li><strong>Infrastructure Replacement Program Rider</strong> (~$5.33/mo) — replacing old cast iron and bare steel pipes</li>
+          <li><strong>PHMSA Rider</strong> (~$0.46/mo) — federal pipeline safety compliance</li>
+          <li><strong>Capital Expenditure Program Rider</strong> (~$6.14/mo) — major system improvements approved by PUCO</li>
+          <li><strong>Infrastructure Development Rider</strong> (~$0.87/mo) — new gas line extensions</li>
+        </ul>
+        <p><strong>Switching suppliers does not remove riders.</strong> They're billed by the utility regardless of who supplies your gas. The only part of your bill that changes when you switch is the supply section.</p>
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">
+        What happens to my service if I switch suppliers?
+        <span class="faq-icon">+</span>
+      </div>
+      <div class="faq-a">
+        <p>Nothing changes about your physical service. Columbia Gas (or Duke, or Dominion) still maintains the pipes, still responds to leaks and emergencies, and still delivers gas to your home. The <strong>only thing that changes is who you pay for the gas commodity itself</strong> — and that shows up as a different company name in the Supply section of your bill.</p>
+        <p>You don't need to do anything to your appliances, pipes, or meter. There's no interruption in service during the switch. The switch typically takes effect within one to two billing cycles.</p>
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">
+        How do I actually switch suppliers?
+        <span class="faq-icon">+</span>
+      </div>
+      <div class="faq-a">
+        <p>The process is straightforward:</p>
+        <ul>
+          <li><strong>Step 1:</strong> Find a supplier you want on the PUCO Energy Choice site (or right here on Ohio Rate Watch)</li>
+          <li><strong>Step 2:</strong> Contact that supplier directly — most have online enrollment, phone, or a link listed in their offer details</li>
+          <li><strong>Step 3:</strong> Have your utility account number handy (it's on your bill)</li>
+          <li><strong>Step 4:</strong> Review and sign the supplier agreement — pay attention to the rate, term length, and any cancellation fees</li>
+          <li><strong>Step 5:</strong> Your utility will confirm the switch; it takes effect within 1–2 billing cycles</li>
+        </ul>
+        <p>You can also switch back to the SCO (default rate) at any time — just contact your current supplier to cancel, keeping any ETF in mind.</p>
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">
+        What is Governmental Aggregation — am I already in one?
+        <span class="faq-icon">+</span>
+      </div>
+      <div class="faq-a">
+        <p>Ohio law allows cities and townships to negotiate a group energy rate on behalf of all residents. This is called <strong>Governmental Aggregation</strong>. If your municipality has done this, you may have been automatically enrolled in a group rate — often better than the utility's default SCO.</p>
+        <p>You'll know you're in one if your bill shows a supplier name and your municipality sent you a notice (often a yellow postcard). You can <strong>opt out at any time</strong> and shop individually for a better rate.</p>
+        <p>Many Greater Cleveland, Columbus, and Cincinnati suburbs have active aggregation programs. Check with your city or township government, or look for "Governmental Aggregation" language on your bill.</p>
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">
+        Is there a catch? What should I watch out for? <span class="faq-tag orange">Important</span>
+        <span class="faq-icon">+</span>
+      </div>
+      <div class="faq-a">
+        <p>Energy Choice is legitimate and regulated by PUCO — but there are things to watch for:</p>
+        <ul>
+          <li><strong>Introductory "teaser" rates</strong> — advertised low rates that only last 1 month before jumping to market rate</li>
+          <li><strong>High early termination fees</strong> — $75–$150 is common on fixed plans; make sure you know what you're signing</li>
+          <li><strong>Door-to-door enrollment</strong> — some suppliers still use aggressive door-to-door sales. You're never obligated to enroll on the spot. Always review offers at energychoice.ohio.gov first</li>
+          <li><strong>Auto-renewal</strong> — some contracts auto-renew at the end of the term, sometimes at a higher variable rate. Mark your calendar or sign up for Ohio Rate Watch alerts</li>
+          <li><strong>Bundle requirements</strong> — some deals require enrolling in both gas and electric; read the fine print</li>
+        </ul>
+        <p>When in doubt, contact PUCO at <strong>1-800-686-7826</strong> or the Ohio Consumers' Counsel at <strong>1-877-742-5622</strong>.</p>
+      </div>
+    </div>
+
+  </div>
+</div>
 
 <!-- HOW IT WORKS -->
 <section style="background:#f0f4f8; margin: 0; max-width:100%; padding: 56px 24px;">
