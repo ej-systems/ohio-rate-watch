@@ -23,10 +23,14 @@
   .hero p { font-size: 1.15rem; opacity: 0.9; max-width: 560px; margin: 0 auto 36px; line-height: 1.6; }
 
   .signup-form { display: flex; gap: 10px; max-width: 480px; margin: 0 auto; flex-wrap: wrap; justify-content: center; }
-  .signup-form input { flex: 1; min-width: 220px; padding: 14px 18px; border: none; border-radius: 8px; font-size: 1rem; outline: none; box-shadow: 0 2px 12px rgba(0,0,0,0.15); }
+  .signup-form input { flex: 1; min-width: 180px; padding: 14px 18px; border: none; border-radius: 8px; font-size: 1rem; outline: none; box-shadow: 0 2px 12px rgba(0,0,0,0.15); }
+  .signup-form input.zip { max-width: 110px; min-width: 90px; flex: 0 0 110px; }
   .signup-form button { background: #ffcc02; color: #1a1a2e; border: none; padding: 14px 24px; border-radius: 8px; font-size: 1rem; font-weight: 700; cursor: pointer; white-space: nowrap; transition: background 0.2s; }
   .signup-form button:hover { background: #f9a825; }
+  .signup-form button:disabled { opacity: 0.6; cursor: not-allowed; }
   .hero .subtext { font-size: 0.82rem; opacity: 0.7; margin-top: 12px; }
+  .form-success { color: #a5d6a7; font-weight: 600; margin-top: 12px; font-size: 0.95rem; }
+  .form-error { color: #ef9a9a; font-weight: 600; margin-top: 12px; font-size: 0.95rem; }
 
   /* STAT BAR */
   .stats { background: #fff; border-bottom: 1px solid #e0e0e0; display: flex; justify-content: center; flex-wrap: wrap; gap: 0; }
@@ -99,10 +103,12 @@
   <div class="badge">🔔 Free Rate Alerts · Ohio Natural Gas</div>
   <h1>Stop paying <em>double</em> for<br>your natural gas.</h1>
   <p>Ohio law gives you the right to choose your natural gas supplier. Most people don't know — and pay far more than they have to. We watch the rates so you don't have to.</p>
-  <form class="signup-form" onsubmit="return false;">
-    <input type="email" placeholder="Enter your email address">
-    <button type="submit">Get Free Alerts →</button>
+  <form class="signup-form" id="hero-form">
+    <input type="email" id="hero-email" placeholder="Your email address" required>
+    <input type="text" class="zip" id="hero-zip" placeholder="Zip code" maxlength="5">
+    <button type="submit" id="hero-btn">Get Free Alerts →</button>
   </form>
+  <div id="hero-msg"></div>
   <div class="subtext">Free forever · No spam · Unsubscribe anytime</div>
 </div>
 
@@ -251,10 +257,12 @@
 <div style="background: #1565c0; color:#fff; padding: 56px 24px; text-align:center;">
   <h2 style="font-size:1.8rem; margin-bottom:12px; color:#fff;">Ready to stop overpaying?</h2>
   <p style="opacity:0.85; margin-bottom:28px; max-width:480px; margin-left:auto; margin-right:auto;">Join free. Get notified the moment a better rate is available for your area.</p>
-  <form class="signup-form" style="max-width:440px; margin:0 auto;" onsubmit="return false;">
-    <input type="email" placeholder="Your email address">
-    <button type="submit">Get Free Alerts →</button>
+  <form class="signup-form" id="footer-form" style="max-width:480px; margin:0 auto;">
+    <input type="email" id="footer-email" placeholder="Your email address" required>
+    <input type="text" class="zip" id="footer-zip" placeholder="Zip" maxlength="5">
+    <button type="submit" id="footer-btn">Get Free Alerts →</button>
   </form>
+  <div id="footer-msg" style="margin-top:12px;font-weight:600;"></div>
 </div>
 
 <footer>
@@ -264,5 +272,58 @@
   Always verify current rates and terms directly with suppliers before switching.
 </footer>
 
+<script>
+  async function subscribe(email, zip, btn, msgEl, isHero) {
+    btn.disabled = true;
+    btn.textContent = 'Signing up...';
+    msgEl.textContent = '';
+    msgEl.className = '';
+    try {
+      const res = await fetch('/api/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, zip }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        msgEl.textContent = "✓ You're on the list! Check your email for confirmation.";
+        msgEl.className = isHero ? 'form-success' : '';
+        if (!isHero) msgEl.style.color = '#a5d6a7';
+        btn.closest('form').reset();
+      } else {
+        throw new Error(data.error || 'Something went wrong');
+      }
+    } catch (err) {
+      msgEl.textContent = '✗ ' + (err.message || 'Please try again.');
+      msgEl.className = isHero ? 'form-error' : '';
+      if (!isHero) msgEl.style.color = '#ef9a9a';
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Get Free Alerts →';
+    }
+  }
+
+  document.getElementById('hero-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    subscribe(
+      document.getElementById('hero-email').value,
+      document.getElementById('hero-zip').value,
+      document.getElementById('hero-btn'),
+      document.getElementById('hero-msg'),
+      true
+    );
+  });
+
+  document.getElementById('footer-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    subscribe(
+      document.getElementById('footer-email').value,
+      document.getElementById('footer-zip').value,
+      document.getElementById('footer-btn'),
+      document.getElementById('footer-msg'),
+      false
+    );
+  });
+</script>
 </body>
 </html>
