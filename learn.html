@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Understanding Ohio Natural Gas Deregulation — Ohio Rate Watch</title>
+<meta name="description" content="Learn how Ohio's deregulated natural gas market works, how SCO rates are set, and how to shop for a better rate. Plain-English guide with historical rate data.">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f8f9fa; color: #1a1a2e; }
+
+  /* NAV */
+  nav { background: #fff; border-bottom: 2px solid #e8f4f8; padding: 0 24px; display: flex; align-items: center; justify-content: space-between; height: 64px; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+  .logo { font-size: 1.3rem; font-weight: 800; color: #1565c0; letter-spacing: -0.5px; text-decoration: none; }
+  .logo span { color: #e53935; }
+  .nav-links { display: flex; gap: 20px; align-items: center; }
+  .nav-links a { color: #555; text-decoration: none; font-size: 0.9rem; font-weight: 500; }
+  .nav-links a:hover { color: #1565c0; }
+  .nav-links a.active { color: #1565c0; font-weight: 700; }
+
+  /* HERO */
+  .hero { background: linear-gradient(135deg, #1565c0 0%, #0d47a1 100%); color: #fff; padding: 56px 24px 64px; text-align: center; }
+  .breadcrumb { font-size: 0.82rem; opacity: 0.7; margin-bottom: 20px; }
+  .breadcrumb a { color: #fff; text-decoration: underline; opacity: 0.85; }
+  .breadcrumb a:hover { opacity: 1; }
+  .hero h1 { font-size: clamp(1.8rem, 4.5vw, 2.8rem); font-weight: 900; line-height: 1.15; max-width: 780px; margin: 0 auto 16px; }
+  .hero p { font-size: 1.1rem; opacity: 0.9; max-width: 620px; margin: 0 auto; line-height: 1.6; }
+
+  /* TABLE OF CONTENTS */
+  .toc { background: #fff; border-bottom: 1px solid #e0e0e0; padding: 20px 24px; }
+  .toc-inner { max-width: 800px; margin: 0 auto; }
+  .toc-inner h3 { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px; color: #999; margin-bottom: 12px; }
+  .toc-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 6px 24px; }
+  .toc-grid a { color: #1565c0; text-decoration: none; font-size: 0.88rem; padding: 4px 0; display: block; }
+  .toc-grid a:hover { text-decoration: underline; }
+
+  /* CONTENT SECTIONS */
+  .content-section { max-width: 800px; margin: 0 auto; padding: 48px 24px; }
+  .content-section h2 { font-size: 1.5rem; font-weight: 800; margin-bottom: 6px; color: #1a1a2e; padding-top: 16px; }
+  .content-section .section-num { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; color: #1565c0; font-weight: 700; margin-bottom: 6px; }
+  .content-section p { font-size: 0.95rem; color: #374151; line-height: 1.7; margin-bottom: 16px; }
+  .content-section ul, .content-section ol { margin: 0 0 16px 20px; font-size: 0.95rem; color: #374151; line-height: 1.8; }
+  .content-section li { margin-bottom: 6px; }
+
+  /* INFO BOXES */
+  .info-box { border-radius: 10px; padding: 18px 22px; margin: 20px 0; font-size: 0.9rem; line-height: 1.6; }
+  .info-box.blue { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a8a; }
+  .info-box.yellow { background: #fefce8; border: 1px solid #fde68a; color: #78350f; }
+  .info-box.green { background: #f0fdf4; border: 1px solid #bbf7d0; color: #14532d; }
+  .info-box.red { background: #fef2f2; border: 1px solid #fca5a5; color: #7f1d1d; }
+  .info-box strong { display: block; margin-bottom: 6px; }
+
+  /* FORMULA BOX */
+  .formula-box { background: #1a1a2e; color: #e2e8f0; border-radius: 10px; padding: 20px 24px; margin: 20px 0; font-family: 'Courier New', monospace; font-size: 1rem; text-align: center; letter-spacing: 0.5px; }
+  .formula-box .result { color: #fbbf24; font-weight: 700; }
+
+  /* DIVIDER */
+  .section-divider { border: none; border-top: 1px solid #e5e7eb; margin: 0; }
+
+  /* CHART SECTION */
+  .chart-section { background: #fff; padding: 48px 24px; border-top: 1px solid #e5e7eb; border-bottom: 1px solid #e5e7eb; }
+  .chart-inner { max-width: 1000px; margin: 0 auto; }
+  .chart-inner h2 { font-size: 1.5rem; font-weight: 800; margin-bottom: 8px; color: #1a1a2e; }
+  .chart-inner > p { font-size: 0.95rem; color: #374151; line-height: 1.7; margin-bottom: 16px; }
+  .time-btns { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px; }
+  .time-btn { padding: 7px 16px; border-radius: 6px; border: 1.5px solid #d1d5db; background: #fff; color: #374151; font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+  .time-btn.active { background: #e53935; color: #fff; border-color: #e53935; }
+  .time-btn:hover:not(.active) { border-color: #9ca3af; }
+  .chart-source { font-size: 0.78rem; color: #9ca3af; margin-top: 16px; line-height: 1.6; }
+
+  /* QUESTIONS CHECKLIST */
+  .checklist { list-style: none; margin: 16px 0; padding: 0; }
+  .checklist li { padding: 10px 14px; margin-bottom: 6px; background: #f9fafb; border-radius: 8px; border-left: 3px solid #1565c0; font-size: 0.9rem; color: #374151; }
+
+  /* STEPS */
+  .steps-list { counter-reset: step; list-style: none; margin: 16px 0; padding: 0; }
+  .steps-list li { counter-increment: step; padding: 12px 14px 12px 52px; margin-bottom: 8px; background: #f9fafb; border-radius: 8px; font-size: 0.9rem; color: #374151; position: relative; line-height: 1.5; }
+  .steps-list li::before { content: counter(step); position: absolute; left: 14px; top: 10px; width: 28px; height: 28px; background: #1565c0; color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.85rem; }
+
+  /* GLOSSARY */
+  .glossary { margin: 16px 0; }
+  .glossary-item { padding: 14px 18px; border-bottom: 1px solid #f0f0f0; }
+  .glossary-item:last-child { border-bottom: none; }
+  .glossary-term { font-weight: 800; color: #1565c0; font-size: 0.95rem; margin-bottom: 4px; }
+  .glossary-def { font-size: 0.88rem; color: #4b5563; line-height: 1.6; }
+
+  /* RESOURCES LINKS */
+  .resource-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; margin: 16px 0; }
+  .resource-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 16px 18px; }
+  .resource-card h4 { font-size: 0.9rem; font-weight: 700; color: #1a1a2e; margin-bottom: 6px; }
+  .resource-card p { font-size: 0.82rem; color: #6b7280; line-height: 1.5; margin-bottom: 8px; }
+  .resource-card a { font-size: 0.82rem; color: #1565c0; text-decoration: none; font-weight: 600; }
+  .resource-card a:hover { text-decoration: underline; }
+
+  /* FOOTER CTA */
+  .footer-cta { background: #1565c0; color: #fff; padding: 56px 24px; text-align: center; }
+  .footer-cta h2 { font-size: 1.8rem; margin-bottom: 12px; color: #fff; }
+  .footer-cta p { opacity: 0.85; margin-bottom: 28px; max-width: 480px; margin-left: auto; margin-right: auto; }
+  .signup-form { display: flex; gap: 10px; max-width: 480px; margin: 0 auto; flex-wrap: wrap; justify-content: center; }
+  .signup-form input { flex: 1; min-width: 180px; padding: 14px 18px; border: none; border-radius: 8px; font-size: 1rem; outline: none; box-shadow: 0 2px 12px rgba(0,0,0,0.15); }
+  .signup-form input.zip { max-width: 110px; min-width: 90px; flex: 0 0 110px; }
+  .signup-form button { background: #ffcc02; color: #1a1a2e; border: none; padding: 14px 24px; border-radius: 8px; font-size: 1rem; font-weight: 700; cursor: pointer; white-space: nowrap; transition: background 0.2s; }
+  .signup-form button:hover { background: #f9a825; }
+  .signup-form button:disabled { opacity: 0.6; cursor: not-allowed; }
+  .form-success { color: #a5d6a7; font-weight: 600; margin-top: 12px; font-size: 0.95rem; }
+  .form-error { color: #ef9a9a; font-weight: 600; margin-top: 12px; font-size: 0.95rem; }
+
+  /* FOOTER */
+  footer { background: #111827; color: #9ca3af; padding: 28px 24px; text-align: center; font-size: 0.82rem; line-height: 1.8; }
+  footer strong { color: #fff; }
+  footer a { color: #60a5fa; text-decoration: none; }
+
+  @media (max-width: 600px) {
+    .nav-links { gap: 12px; }
+    .nav-links a { font-size: 0.82rem; }
+    .content-section { padding: 36px 18px; }
+    .chart-inner { padding: 0; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="/" class="logo">Ohio<span>Rate</span>Watch</a>
+  <div class="nav-links">
+    <a href="/">Home</a>
+    <a href="/learn" class="active">Learn</a>
+    <a href="#">Alerts</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="breadcrumb"><a href="/">Home</a> → Learn</div>
+  <h1>Understanding Your Ohio Natural Gas Bill</h1>
+  <p>Ohio deregulated natural gas in 1996. Here's what that actually means for your wallet.</p>
+</div>
+
+<!-- TABLE OF CONTENTS -->
+<div class="toc">
+  <div class="toc-inner">
+    <h3>On this page</h3>
+    <div class="toc-grid">
+      <a href="#deregulation">Ohio Deregulation 101</a>
+      <a href="#sco-rate">How the SCO Rate Is Set</a>
+      <a href="#history-chart">Historical Rate Chart</a>
+      <a href="#price-spikes">What Happened in 2022</a>
+      <a href="#aggregation">Government Aggregation</a>
+      <a href="#rights">Your Rights as a Shopper</a>
+      <a href="#how-to-switch">Steps to Switch</a>
+      <a href="#glossary">Glossary</a>
+      <a href="#resources">PUCO &amp; Official Resources</a>
+    </div>
+  </div>
+</div>
+
+<!-- SECTION 1: DEREGULATION 101 -->
+<div class="content-section" id="deregulation">
+  <div class="section-num">Section 1</div>
+  <h2>Ohio Deregulation 101</h2>
+  <p>In 1996, Ohio opened its natural gas market to competition, allowing residents to choose their gas supplier. (Electric deregulation followed in 2001.) This means you have the legal right to shop for a better price on the gas commodity itself.</p>
+  <p>Here's the key distinction: <strong>you choose your gas supplier, but your utility still delivers it.</strong> Columbia Gas, Enbridge, or CenterPoint maintains the pipes, reads your meter, and responds to emergencies regardless of who supplies your gas.</p>
+  <p>If you don't choose a supplier, you're automatically placed on the <strong>Standard Choice Offer (SCO)</strong> — the default rate set monthly by the utility based on market prices. About 3 million Ohio customers are on the SCO right now.</p>
+
+  <div class="info-box blue">
+    <strong>Three utilities currently use the SCO system:</strong>
+    Columbia Gas of Ohio · Enbridge Gas Ohio · CenterPoint Energy Ohio<br><br>
+    Duke Energy Ohio currently uses a different method called Gas Cost Recovery (GCR), but is moving to the SCO system in April 2026.
+  </div>
+</div>
+
+<hr class="section-divider">
+
+<!-- SECTION 2: HOW SCO IS SET -->
+<div class="content-section" id="sco-rate">
+  <div class="section-num">Section 2</div>
+  <h2>How the SCO Rate Is Set</h2>
+  <p>The SCO rate you pay each month is calculated from two components:</p>
+  <ol>
+    <li><strong>NYMEX month-end settlement price</strong> — the commodity cost of natural gas, determined by national markets. This changes monthly based on supply, demand, and weather.</li>
+    <li><strong>Retail Price Adjustment (RPA)</strong> — the supplier's cost to actually deliver gas to your utility's system. This is set through a competitive auction process, with results announced by PUCO.</li>
+  </ol>
+
+  <div class="formula-box">
+    SCO = (NYMEX settlement + RPA) ÷ 10 = <span class="result">$/ccf</span>
+  </div>
+
+  <p>Because both components can change, your SCO rate fluctuates monthly. You have no price certainty — it could go up or down from one bill to the next.</p>
+
+  <div class="info-box red">
+    <strong>The 2025–2026 RPA spike</strong>
+    The RPA jumped from $1.66/Mcf to $3.25/Mcf — a 96% increase. This is the primary reason bills have roughly doubled for SCO customers. The RPA is set by auction, and the latest auction produced dramatically higher bids. This isn't a one-time blip — it reflects structural changes in supplier costs.
+  </div>
+</div>
+
+<hr class="section-divider">
+
+<!-- SECTION 3: HISTORICAL CHART -->
+<div class="chart-section" id="history-chart">
+  <div class="chart-inner">
+    <div class="section-num">Section 3</div>
+    <h2>Ohio Gas Rate History</h2>
+    <p>See how SCO rates have moved over time — and why locking in a fixed rate can protect you from spikes.</p>
+
+    <div class="time-btns">
+      <button class="time-btn" data-range="6m">6M</button>
+      <button class="time-btn" data-range="1y">1Y</button>
+      <button class="time-btn active" data-range="5y">5Y</button>
+      <button class="time-btn" data-range="10y">10Y</button>
+      <button class="time-btn" data-range="all">All</button>
+    </div>
+
+    <div style="position:relative;height:420px;max-height:50vh;">
+      <canvas id="learn-rate-chart"></canvas>
+    </div>
+    <p class="chart-source">Source: PUCO official SCO historical charts. EIA Ohio Residential data used for pre-2018 reference.</p>
+  </div>
+</div>
+
+<!-- SECTION 4: PRICE SPIKES -->
+<div class="content-section" id="price-spikes">
+  <div class="section-num">Section 4</div>
+  <h2>What Happened in 2022 (and Why It's Happening Again)</h2>
+  <p>In early 2022, Russia's invasion of Ukraine sent global natural gas markets into chaos. European countries scrambled for liquefied natural gas (LNG), which drove up demand and prices worldwide. Ohio SCO rates hit <strong>$1.10/ccf in September 2022</strong> — roughly 4× the COVID-era lows.</p>
+  <p>Through 2023 and 2024, prices fell back to a more normal $0.32–$0.50/ccf range as markets stabilized.</p>
+  <p>Then it happened again. In the 2025–2026 heating season:</p>
+  <ul>
+    <li>PUCO's RPA auction produced a 96% increase in the Retail Price Adjustment</li>
+    <li>Winter Storm Fern (January 2026) caused a sharp NYMEX price spike</li>
+    <li>Columbia Gas SCO jumped to <strong>$1.071/ccf</strong></li>
+  </ul>
+
+  <div class="info-box yellow">
+    <strong>This is a structural problem, not a one-time event.</strong>
+    The SCO rate is exposed to both commodity market volatility (NYMEX) and supplier auction dynamics (RPA). As long as you're on the SCO, your bill is at the mercy of both. A fixed-rate plan eliminates this uncertainty for the length of your contract.
+  </div>
+</div>
+
+<hr class="section-divider">
+
+<!-- SECTION 5: GOVERNMENT AGGREGATION -->
+<div class="content-section" id="aggregation">
+  <div class="section-num">Section 5</div>
+  <h2>Government Aggregation</h2>
+  <p>Ohio law allows municipalities and townships to aggregate the buying power of all residents and negotiate a group gas or electric rate. This is called <strong>Governmental Aggregation</strong>.</p>
+  <ul>
+    <li>Your local government negotiates a single rate on behalf of all eligible residents</li>
+    <li>You're automatically enrolled but can always opt out</li>
+    <li>Some aggregation programs offer better rates than you'd get shopping individually</li>
+    <li>Many Greater Cleveland, Columbus, and Cincinnati suburbs have active programs</li>
+  </ul>
+  <p>Check if your municipality has a program by contacting your local government or calling PUCO at <strong>(800) 686-7826</strong>. Look for a "Governmental Aggregation" notice on your bill.</p>
+
+  <div class="info-box green">
+    <strong>Already in an aggregation program?</strong>
+    You may already have a better rate than the default SCO. Check your bill — if you see a supplier name other than your utility, you're either in an aggregation program or have previously chosen a supplier. You can still opt out and shop individually if you find a better deal.
+  </div>
+</div>
+
+<hr class="section-divider">
+
+<!-- SECTION 6: YOUR RIGHTS -->
+<div class="content-section" id="rights">
+  <div class="section-num">Section 6</div>
+  <h2>Understanding Your Rights as a Shopper</h2>
+  <p>Before signing with any natural gas supplier, ask these questions:</p>
+  <ul class="checklist">
+    <li>Is this rate <strong>fixed or variable</strong>? For how long?</li>
+    <li>What is the <strong>Early Termination Fee (ETF)</strong>?</li>
+    <li>Are there <strong>monthly fees</strong> beyond the per-ccf rate?</li>
+    <li>What happens at contract end — do I <strong>auto-renew</strong> at a new rate?</li>
+    <li>Is this a <strong>promotional/intro rate</strong> that changes after month 1?</li>
+    <li>Is any portion of this <strong>renewable energy</strong>?</li>
+    <li>Is this rate available to me as a Columbia Gas / Enbridge / CenterPoint customer?</li>
+  </ul>
+
+  <div class="info-box yellow">
+    <strong>Watch out for intro/teaser rates.</strong>
+    Some suppliers advertise a very low price that only lasts for the first month, then switches to a market-based variable rate. Always confirm the rate that applies for the full contract term.
+  </div>
+</div>
+
+<hr class="section-divider">
+
+<!-- SECTION 7: HOW TO SWITCH -->
+<div class="content-section" id="how-to-switch">
+  <div class="section-num">Section 7</div>
+  <h2>Steps to Switch Suppliers</h2>
+  <ol class="steps-list">
+    <li><strong>Know your current supplier and rate.</strong> Check your bill — it's listed in the Supply section.</li>
+    <li><strong>Know your usage.</strong> Find your average ccf/month on your bill. This determines your actual savings.</li>
+    <li><strong>Compare rates</strong> at <a href="https://energychoice.ohio.gov" target="_blank" style="color:#1565c0;">energychoice.ohio.gov</a> or <a href="https://ohioratewatch.com" style="color:#1565c0;">ohioratewatch.com</a>.</li>
+    <li><strong>Check contract terms:</strong> ETF, monthly fees, term length, promo vs. locked rate.</li>
+    <li><strong>Calculate true monthly cost:</strong> (rate × your ccf) + monthly fee.</li>
+    <li><strong>Contact the supplier</strong> or sign up online. Have your utility account number ready.</li>
+    <li><strong>Wait 1–2 billing cycles</strong> for the switch to take effect. There's no service interruption.</li>
+    <li><strong>Mark your contract end date on your calendar.</strong></li>
+    <li><strong>Review your rate at expiration</strong> — don't let it silently roll over to a variable rate.</li>
+  </ol>
+</div>
+
+<hr class="section-divider">
+
+<!-- SECTION 8: GLOSSARY -->
+<div class="content-section" id="glossary">
+  <div class="section-num">Section 8</div>
+  <h2>Glossary</h2>
+  <p>Plain-English definitions — no jargon.</p>
+  <div class="glossary">
+    <div class="glossary-item">
+      <div class="glossary-term">SCO (Standard Choice Offer)</div>
+      <div class="glossary-def">The default gas rate you pay if you don't pick a supplier. Set monthly by PUCO based on market prices.</div>
+    </div>
+    <div class="glossary-item">
+      <div class="glossary-term">SSO (Standard Service Offer)</div>
+      <div class="glossary-def">Same as SCO but for customers transitioning back from a supplier. Usually lasts 1–2 billing cycles.</div>
+    </div>
+    <div class="glossary-item">
+      <div class="glossary-term">NYMEX</div>
+      <div class="glossary-def">The commodity exchange that sets the daily national price of natural gas — like a stock market for gas.</div>
+    </div>
+    <div class="glossary-item">
+      <div class="glossary-term">RPA (Retail Price Adjustment)</div>
+      <div class="glossary-def">The supplier's cost to actually get gas to your utility's system. Set quarterly via competitive auction.</div>
+    </div>
+    <div class="glossary-item">
+      <div class="glossary-term">CCF</div>
+      <div class="glossary-def">100 cubic feet of natural gas. Your bill is priced in $/ccf. (Enbridge uses $/Mcf = 1,000 cubic feet — divide by 10 to compare.)</div>
+    </div>
+    <div class="glossary-item">
+      <div class="glossary-term">Fixed Rate</div>
+      <div class="glossary-def">A locked price per ccf for the length of your contract. Your commodity cost doesn't change with the market.</div>
+    </div>
+    <div class="glossary-item">
+      <div class="glossary-term">Variable Rate</div>
+      <div class="glossary-def">A rate that changes monthly with the market. Could be good or bad depending on timing.</div>
+    </div>
+    <div class="glossary-item">
+      <div class="glossary-term">ETF (Early Termination Fee)</div>
+      <div class="glossary-def">A penalty for canceling your contract early. Typically $50–$200.</div>
+    </div>
+    <div class="glossary-item">
+      <div class="glossary-term">Government Aggregation</div>
+      <div class="glossary-def">A program where your local government negotiates a group gas/electric rate for residents.</div>
+    </div>
+    <div class="glossary-item">
+      <div class="glossary-term">PUCO</div>
+      <div class="glossary-def">Public Utilities Commission of Ohio. Regulates utilities and certifies suppliers.</div>
+    </div>
+    <div class="glossary-item">
+      <div class="glossary-term">GCR (Gas Cost Recovery)</div>
+      <div class="glossary-def">Duke Energy Ohio's current rate-setting method (different from SCO). Duke moves to SCO in April 2026.</div>
+    </div>
+    <div class="glossary-item">
+      <div class="glossary-term">Henry Hub</div>
+      <div class="glossary-def">The benchmark natural gas pricing point in Louisiana. NYMEX prices track this closely.</div>
+    </div>
+  </div>
+</div>
+
+<hr class="section-divider">
+
+<!-- SECTION 9: RESOURCES -->
+<div class="content-section" id="resources">
+  <div class="section-num">Section 9</div>
+  <h2>PUCO &amp; Official Resources</h2>
+  <div class="resource-grid">
+    <div class="resource-card">
+      <h4>Energy Choice Ohio</h4>
+      <p>Compare current certified supplier rates for your utility.</p>
+      <a href="https://energychoice.ohio.gov" target="_blank">energychoice.ohio.gov →</a>
+    </div>
+    <div class="resource-card">
+      <h4>Columbia Gas SCO History</h4>
+      <p>Official PUCO historical SCO rate charts for Columbia Gas of Ohio.</p>
+      <a href="https://puco.ohio.gov/utilities/gas/resources/columbia-gas-sco-historical-charts" target="_blank">View charts →</a>
+    </div>
+    <div class="resource-card">
+      <h4>Enbridge Gas Ohio SCO History</h4>
+      <p>Official PUCO historical SCO rate charts for Enbridge Gas Ohio.</p>
+      <a href="https://puco.ohio.gov/utilities/gas/resources/enbridge-gas-ohio-sco-historical-chart" target="_blank">View charts →</a>
+    </div>
+    <div class="resource-card">
+      <h4>CenterPoint Energy SCO History</h4>
+      <p>Official PUCO historical SCO rate charts for CenterPoint Energy Ohio.</p>
+      <a href="https://puco.ohio.gov/utilities/gas/resources/centerpoint-energy-sco-historical-chart" target="_blank">View charts →</a>
+    </div>
+    <div class="resource-card">
+      <h4>PUCO Contact</h4>
+      <p>Questions about your utility or supplier? Call the PUCO.</p>
+      <a href="tel:8006867826">(800) 686-7826</a>
+    </div>
+    <div class="resource-card">
+      <h4>Ohio Consumers' Counsel</h4>
+      <p>Independent advocate for Ohio residential utility consumers.</p>
+      <a href="https://occ.ohio.gov" target="_blank">occ.ohio.gov →</a>
+    </div>
+    <div class="resource-card">
+      <h4>Energy Assistance Programs</h4>
+      <p>Help with utility bills: HEAP, PIPP+, LIHEAP.</p>
+      <a href="https://puco.ohio.gov" target="_blank">Learn about assistance →</a>
+    </div>
+    <div class="resource-card">
+      <h4>Rate Change Alerts</h4>
+      <p>Sign up for PUCO notifications when rates change.</p>
+      <a href="https://puco.ohio.gov" target="_blank">Sign up at puco.ohio.gov →</a>
+    </div>
+  </div>
+</div>
+
+<!-- FOOTER CTA -->
+<div class="footer-cta">
+  <h2>Ready to compare rates?</h2>
+  <p>Get free alerts when better rates become available for your area. No spam, unsubscribe anytime.</p>
+  <form class="signup-form" id="footer-form">
+    <input type="email" id="footer-email" placeholder="Your email address" required>
+    <input type="text" class="zip" id="footer-zip" placeholder="Zip" maxlength="5">
+    <button type="submit" id="footer-btn">Get Free Alerts →</button>
+  </form>
+  <div id="footer-msg" style="margin-top:12px;font-weight:600;"></div>
+  <p style="margin-top:16px;font-size:0.9rem;"><a href="/" style="color:#ffcc02;text-decoration:none;font-weight:700;">← Back to ohioratewatch.com</a></p>
+</div>
+
+<footer>
+  <strong>OhioRateWatch.com</strong> · A project of EJ Systems LLC · Cleveland, Ohio · <a href="tel:8334317283">833.431.RATE</a><br>
+  <br>
+  Rate data sourced from <a href="https://www.energychoice.ohio.gov" target="_blank">PUCO Energy Choice Ohio</a>. Not affiliated with any supplier, Columbia Gas, or any utility company.<br>
+  Always verify current rates, terms, and fees directly with suppliers before switching service.<br>
+  <br>
+  Questions or concerns? Contact the <a href="https://www.puco.ohio.gov" target="_blank">Public Utilities Commission of Ohio (PUCO)</a> at 1-800-686-7826
+  or the <a href="https://www.pickocc.org" target="_blank">Ohio Consumers' Counsel (OCC)</a> at 1-877-742-5622.
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.1.0/dist/chartjs-plugin-annotation.min.js"></script>
+<script>
+(function() {
+  'use strict';
+
+  const COLORS = {
+    columbia:    '#e53935',
+    enbridge:    '#7b1fa2',
+    centerpoint: '#f57c00',
+    eiaRef:      '#9ca3af',
+    henryHub:    '#1565c0',
+    bestFixed:   '#16a34a',
+    grid:        '#f0f0f0',
+    tooltipBg:   '#1a1a2e',
+  };
+
+  const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+  let chartInstance = null;
+  let fullData = null;
+  let currentRange = '5y';
+
+  function toMap(entries) {
+    const m = {};
+    (entries || []).forEach(d => { m[d.date] = d.value; });
+    return m;
+  }
+
+  function fmtDate(label) {
+    const [y, m] = (label || '').split('-');
+    return MONTHS[parseInt(m) - 1] + ' ' + y;
+  }
+
+  function cutoffDate(range) {
+    const now = new Date();
+    switch (range) {
+      case '6m':  now.setMonth(now.getMonth() - 6); break;
+      case '1y':  now.setFullYear(now.getFullYear() - 1); break;
+      case '5y':  now.setFullYear(now.getFullYear() - 5); break;
+      case '10y': now.setFullYear(now.getFullYear() - 10); break;
+      case 'all': return '1999-01';
+    }
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    return y + '-' + m;
+  }
+
+  function buildChart(data, range) {
+    const canvas = document.getElementById('learn-rate-chart');
+    if (!canvas) return;
+
+    const cutoff = cutoffDate(range);
+    const longterm = range === '10y' || range === 'all';
+
+    const colMap  = toMap(data.columbiaGasSco || data.sco);
+    const engMap  = toMap(data.enbridgeGasSco);
+    const cpeMap  = toMap(data.centerpointSco);
+    const hhMap   = toMap(data.henryHub);
+    const eiaMap  = toMap(data.eiaOhioRef);
+
+    const allDates = Array.from(new Set([
+      ...Object.keys(colMap), ...Object.keys(engMap), ...Object.keys(cpeMap),
+      ...Object.keys(hhMap), ...Object.keys(eiaMap),
+    ])).filter(d => d >= cutoff).sort();
+
+    const nullIfMissing = (map, d) => map[d] !== undefined ? map[d] : null;
+
+    const datasets = [];
+
+    // EIA reference for long-term views
+    if (longterm && Object.keys(eiaMap).length > 0) {
+      datasets.push({
+        label: 'Ohio Residential Avg — EIA (pre-2018 reference)',
+        data: allDates.map(d => nullIfMissing(eiaMap, d)),
+        borderColor: COLORS.eiaRef, backgroundColor: 'transparent',
+        borderWidth: 1.5, pointRadius: 1, pointHoverRadius: 4,
+        borderDash: [4, 2], fill: false, tension: 0.3, spanGaps: false,
+      });
+    }
+
+    // Columbia Gas (always shown)
+    datasets.push({
+      label: 'Columbia Gas SCO ($/ccf)',
+      data: allDates.map(d => nullIfMissing(colMap, d)),
+      borderColor: COLORS.columbia, backgroundColor: 'rgba(229,57,53,0.07)',
+      borderWidth: 2.5, pointRadius: longterm ? 1 : 2, pointHoverRadius: 6,
+      pointBackgroundColor: COLORS.columbia, fill: true, tension: 0.3, spanGaps: false,
+    });
+
+    // Enbridge
+    datasets.push({
+      label: 'Enbridge Gas Ohio SCO ($/ccf)',
+      data: allDates.map(d => nullIfMissing(engMap, d)),
+      borderColor: COLORS.enbridge, backgroundColor: 'transparent',
+      borderWidth: 1.8, pointRadius: 1.5, pointHoverRadius: 5,
+      borderDash: [4, 3], fill: false, tension: 0.3, spanGaps: false,
+    });
+
+    // CenterPoint
+    datasets.push({
+      label: 'CenterPoint Energy SCO ($/ccf)',
+      data: allDates.map(d => nullIfMissing(cpeMap, d)),
+      borderColor: COLORS.centerpoint, backgroundColor: 'transparent',
+      borderWidth: 1.8, pointRadius: 1.5, pointHoverRadius: 5,
+      borderDash: [4, 3], fill: false, tension: 0.3, spanGaps: false,
+    });
+
+    // Henry Hub
+    datasets.push({
+      label: 'Henry Hub ($/ccf equiv.)',
+      data: allDates.map(d => nullIfMissing(hhMap, d)),
+      borderColor: COLORS.henryHub, backgroundColor: 'transparent',
+      borderWidth: 1.5, pointRadius: 1, pointHoverRadius: 4,
+      borderDash: [6, 4], fill: false, tension: 0.3, spanGaps: false,
+    });
+
+    // Build annotations
+    const annotations = {};
+    (data.events || []).forEach((evt, i) => {
+      if (!allDates.includes(evt.date)) return;
+      annotations['event' + i] = {
+        type: 'line', xMin: evt.date, xMax: evt.date,
+        borderColor: 'rgba(156,163,175,0.45)', borderWidth: 1, borderDash: [4, 4],
+        label: {
+          display: true, content: evt.icon + ' ' + evt.label, position: 'start',
+          backgroundColor: 'rgba(255,255,255,0.92)', color: '#374151',
+          font: { size: 10, weight: '600' }, padding: { top: 3, bottom: 3, left: 6, right: 6 },
+          borderRadius: 4,
+        }
+      };
+    });
+
+    if (data.pucoBoundary && allDates.includes(data.pucoBoundary)) {
+      annotations.pucoBoundary = {
+        type: 'line', xMin: data.pucoBoundary, xMax: data.pucoBoundary,
+        borderColor: 'rgba(107,114,128,0.6)', borderWidth: 2, borderDash: [6, 3],
+        label: {
+          display: true, content: '📋 PUCO Official SCO data begins', position: 'end',
+          backgroundColor: 'rgba(255,255,255,0.92)', color: '#374151',
+          font: { size: 10, weight: '600' }, padding: { top: 3, bottom: 3, left: 6, right: 6 },
+          borderRadius: 4,
+        }
+      };
+    }
+
+    if (data.bestFixed && data.bestFixed > 0.1) {
+      annotations.bestFixed = {
+        type: 'line', yMin: data.bestFixed, yMax: data.bestFixed,
+        borderColor: COLORS.bestFixed, borderWidth: 2, borderDash: [8, 4],
+        label: {
+          display: true, content: 'Best Fixed: $' + Number(data.bestFixed).toFixed(3) + '/ccf',
+          position: 'end', backgroundColor: COLORS.bestFixed, color: '#fff',
+          font: { size: 11, weight: '700' }, padding: { top: 4, bottom: 4, left: 8, right: 8 },
+          borderRadius: 4,
+        }
+      };
+    }
+
+    if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
+
+    chartInstance = new Chart(canvas, {
+      type: 'line',
+      data: { labels: allDates, datasets },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { position: 'top', labels: { usePointStyle: true, padding: 14, font: { size: 11, weight: '600' } } },
+          tooltip: {
+            backgroundColor: COLORS.tooltipBg, titleFont: { size: 13, weight: '700' },
+            bodyFont: { size: 12 }, padding: 12, cornerRadius: 8,
+            filter: ctx => ctx.parsed.y !== null,
+            callbacks: {
+              title: items => fmtDate(items[0].label),
+              label: ctx => ctx.parsed.y === null ? null : ctx.dataset.label.split(' (')[0] + ': $' + ctx.parsed.y.toFixed(3) + '/ccf',
+            },
+          },
+          annotation: { annotations },
+        },
+        scales: {
+          x: {
+            grid: { display: false },
+            ticks: {
+              font: { size: 10 }, color: '#9ca3af', maxRotation: 45,
+              callback: function(val) {
+                const label = this.getLabelForValue(val);
+                if (typeof label !== 'string') return '';
+                const [, m] = label.split('-');
+                if (longterm) return m === '01' ? fmtDate(label) : '';
+                return (m === '01' || m === '07') ? fmtDate(label) : '';
+              },
+            },
+          },
+          y: {
+            beginAtZero: false, min: 0.10,
+            grid: { color: COLORS.grid },
+            ticks: { font: { size: 11 }, color: '#9ca3af', callback: val => '$' + val.toFixed(2) },
+            title: { display: true, text: '$/ccf', font: { size: 12, weight: '600' }, color: '#6b7280' },
+          },
+        },
+      },
+    });
+  }
+
+  async function init() {
+    // Fetch longterm data (superset) once
+    try {
+      const res = await fetch('/api/history/chart-data?range=longterm');
+      fullData = await res.json();
+    } catch (err) {
+      console.error('Chart data unavailable:', err);
+      document.getElementById('learn-rate-chart').parentElement.innerHTML =
+        '<p style="color:#999;text-align:center;padding:40px;">Chart data unavailable. Please try again later.</p>';
+      return;
+    }
+
+    buildChart(fullData, '5y');
+
+    // Wire up time range buttons
+    document.querySelectorAll('.time-btn').forEach(btn => {
+      btn.addEventListener('click', function() {
+        const range = this.dataset.range;
+        if (range === currentRange) return;
+        currentRange = range;
+        document.querySelectorAll('.time-btn').forEach(b => b.classList.remove('active'));
+        this.classList.add('active');
+        buildChart(fullData, range);
+      });
+    });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})();
+</script>
+
+<script>
+  async function subscribe(email, zip, btn, msgEl) {
+    btn.disabled = true; btn.textContent = 'Signing up...'; msgEl.textContent = '';
+    try {
+      const res = await fetch('/api/subscribe', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, zip }) });
+      const data = await res.json();
+      if (res.ok) { msgEl.textContent = "✓ You're on the list!"; msgEl.style.color = '#a5d6a7'; btn.closest('form').reset(); }
+      else throw new Error(data.error || 'Something went wrong');
+    } catch (err) { msgEl.textContent = '✗ ' + (err.message || 'Please try again.'); msgEl.style.color = '#ef9a9a'; }
+    finally { btn.disabled = false; btn.textContent = 'Get Free Alerts →'; }
+  }
+  document.getElementById('footer-form').addEventListener('submit', e => {
+    e.preventDefault();
+    subscribe(document.getElementById('footer-email').value, document.getElementById('footer-zip').value, document.getElementById('footer-btn'), document.getElementById('footer-msg'));
+  });
+</script>
+</body>
+</html>

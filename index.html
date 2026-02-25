@@ -194,8 +194,11 @@
 <body>
 
 <nav>
-  <div class="logo">Ohio<span>Rate</span>Watch</div>
-  <a href="#">Sign Up for Free Alerts</a>
+  <a href="/" class="logo" style="text-decoration:none;">Ohio<span>Rate</span>Watch</a>
+  <div style="display:flex;gap:20px;align-items:center;">
+    <a href="/learn" style="color:#555;text-decoration:none;font-size:0.9rem;font-weight:500;">Learn</a>
+    <a href="#" style="color:#555;text-decoration:none;font-size:0.9rem;font-weight:500;">Sign Up for Free Alerts</a>
+  </div>
 </nav>
 
 <!-- HERO -->
@@ -406,6 +409,27 @@
 
   <p class="disclaimer">Rate data sourced from PUCO Energy Choice Ohio. Rates are updated daily but may not reflect real-time changes. Always verify current rates, terms, and fees directly with suppliers before enrolling. Savings estimates based on default SCO rate; actual savings depend on your usage and the rate after any intro period.</p>
 </section>
+
+
+<!-- RATE HISTORY CHART -->
+<section style="background:#fff; margin:0; max-width:100%; padding:56px 24px; border-top:1px solid #e5e7eb;">
+  <div style="max-width:1000px; margin:0 auto;">
+    <h2 style="font-size:1.7rem;font-weight:800;margin-bottom:8px;color:#1a1a2e;">Why Rates Change: Ohio Gas Price History</h2>
+    <p style="color:#666;margin-bottom:8px;font-size:1rem;">The SCO rate fluctuates with wholesale natural gas markets, weather events, and regulatory changes. That volatility is exactly why fixed-rate plans exist — they lock your price regardless of what the market does.</p>
+    <p class="updated" style="margin-bottom:20px;"><span class="live-dot"></span>Data: Jan 2020 – Feb 2026 · Mock data (historical backfill in progress)</p>
+    <div style="position:relative;height:420px;max-height:50vh;">
+      <canvas id="rate-history-chart"></canvas>
+    </div>
+    <p style="font-size:0.78rem;color:#9ca3af;margin-top:16px;line-height:1.6;">Source: PUCO, EIA. SCO = Standard Choice Offer (what you pay if you don't switch). Henry Hub = commodity benchmark price.</p>
+    <div style="margin-top:12px;padding:12px 18px;background:#f0fdf4;border-radius:8px;border:1px solid #bbf7d0;font-size:0.85rem;color:#166534;">
+      <strong>Green dashed line:</strong> Best available fixed rate today: <strong>$0.499/ccf</strong> — locked for 12 months. Compare that to the red SCO line above.
+    </div>
+    <p style="margin-top:16px;font-size:0.9rem;text-align:center;"><a href="/learn" style="color:#1565c0;text-decoration:none;font-weight:600;">Want to understand how rates work? Read our full explainer &rarr;</a></p>
+  </div>
+</section>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.1.0/dist/chartjs-plugin-annotation.min.js"></script>
+<script src="/chart-history.js"></script>
 
 <!-- HOW YOUR BILL WORKS -->
 <div class="bill-section">
