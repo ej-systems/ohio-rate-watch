@@ -44,12 +44,14 @@
     const cpeMap  = buildDatasetMap(data.centerpointSco);
     const hhMap   = buildDatasetMap(data.henryHub);
 
-    // Collect all unique dates across all datasets, sorted
+    // Collect all unique dates across SCO datasets only (2018+), sorted
+    // Henry Hub goes back to 1997 — clamp to SCO range for readability
+    const START_DATE = '2018-01';
     const allDates = Array.from(new Set([
       ...Object.keys(colMap),
       ...Object.keys(engMap),
       ...Object.keys(cpeMap),
-      ...Object.keys(hhMap),
+      ...Object.keys(hhMap).filter(d => d >= START_DATE),
     ])).sort();
 
     const nullIfMissing = (map, date) => {
