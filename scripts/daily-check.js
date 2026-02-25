@@ -18,6 +18,7 @@ process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { insertSnapshot } from '../lib/history-store.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, '..');
@@ -171,6 +172,14 @@ async function main() {
   // Save latest snapshot
   fs.writeFileSync(LATEST_FILE, JSON.stringify(current, null, 2));
   log(`Saved ${current.length} rate pages to rates-latest.json`);
+
+  // Store to historical SQLite database
+  try {
+    const rowCount = insertSnapshot(current);
+    log(`Stored ${rowCount} supplier rows in history database`);
+  } catch (err) {
+    log("WARNING: Failed to store history:", err.message);
+  }
 
   // Load baseline for comparison
   let changes = [];
