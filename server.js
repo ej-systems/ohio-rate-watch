@@ -467,6 +467,19 @@ const server = http.createServer(async (req, res) => {
           errors.push(`Offer insert: ${err.message}`);
         }
 
+        // Shared CSV parser for PUCO Tableau data
+        function parseCSVSimple(text) {
+          const lines = text.trim().split('\n');
+          if (lines.length < 2) return [];
+          const headers = lines[0].split(',').map(h => h.trim());
+          return lines.slice(1).filter(Boolean).map(line => {
+            const values = line.split(',').map(v => v.trim());
+            const obj = {};
+            headers.forEach((h, i) => { obj[h] = values[i] || ''; });
+            return obj;
+          });
+        }
+
         // Scrape PUCO city bills
         let cityBillCount = 0;
         try {
@@ -483,18 +496,6 @@ const server = http.createServer(async (req, res) => {
             }
             return null;
           }
-          function parseCSVSimple(text) {
-            const lines = text.trim().split('\n');
-            if (lines.length < 2) return [];
-            const headers = lines[0].split(',').map(h => h.trim());
-            return lines.slice(1).filter(Boolean).map(line => {
-              const values = line.split(',').map(v => v.trim());
-              const obj = {};
-              headers.forEach((h, i) => { obj[h] = values[i] || ''; });
-              return obj;
-            });
-          }
-
           const reportMonth = new Date().toISOString().slice(0, 7);
           const billRes = await fetch('https://analytics.das.ohio.gov/t/PUCPUB/views/UtilityRateSurvey/BillbyCity.csv');
           if (!billRes.ok) throw new Error(`BillbyCity: ${billRes.status}`);
