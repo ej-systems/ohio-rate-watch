@@ -560,8 +560,20 @@
   Always verify current rates, terms, and fees directly with suppliers before switching service.<br>
   <br>
   Questions or concerns? Contact the <a href="https://www.puco.ohio.gov" target="_blank">Public Utilities Commission of Ohio (PUCO)</a> at 1-800-686-7826
-  or the <a href="https://www.pickocc.org" target="_blank">Ohio Consumers' Counsel (OCC)</a> at 1-877-742-5622.
+  or the <a href="https://www.pickocc.org" target="_blank">Ohio Consumers' Counsel (OCC)</a> at 1-877-742-5622.<br>
+  <br>
+  <a href="https://github.com/ej-systems/ohio-rate-watch" target="_blank" style="color:#60a5fa;">Open source under AGPL-3.0</a> &nbsp;·&nbsp;
+  <button onclick="shareSite()" style="background:none;border:none;color:#60a5fa;cursor:pointer;font-size:0.82rem;padding:0;text-decoration:underline;">Share this site</button>
 </footer>
+<script>
+function shareSite() {
+  if (navigator.share) {
+    navigator.share({ title: 'Ohio Rate Watch', text: 'Free tool to compare Ohio natural gas supplier rates — no commissions, sorted by price only.', url: 'https://ohioratewatch.com' });
+  } else {
+    navigator.clipboard.writeText('https://ohioratewatch.com').then(() => alert('Link copied to clipboard!'));
+  }
+}
+</script>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.1.0/dist/chartjs-plugin-annotation.min.js"></script>
