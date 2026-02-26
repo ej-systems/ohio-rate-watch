@@ -18,7 +18,7 @@ process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { insertSnapshot } from '../lib/history-store.js';
+import { insertSnapshot, insertSupplierOffers } from '../lib/history-store.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, '..');
@@ -179,6 +179,15 @@ async function main() {
     log(`Stored ${rowCount} supplier rows in history database`);
   } catch (err) {
     log("WARNING: Failed to store history:", err.message);
+  }
+
+  // Store to supplier_offers table (one row per offer per day)
+  try {
+    const today = new Date().toISOString().slice(0, 10);
+    const offerCount = insertSupplierOffers(today, current);
+    log(`Stored ${offerCount} offers in supplier_offers table for ${today}`);
+  } catch (err) {
+    log("WARNING: Failed to store supplier offers:", err.message);
   }
 
   // Load baseline for comparison

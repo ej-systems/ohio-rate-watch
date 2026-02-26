@@ -10,6 +10,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import Database from 'better-sqlite3';
+import { getTodayOffers, getBestFixedRate } from '../lib/history-store.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
@@ -148,16 +149,26 @@ function buildChartData(longterm = false) {
     ORDER BY month ASC
   `).all(hhStart).map(r => ({ date: r.month, value: r.value }));
 
-  const bestFixedRow = db.prepare(`
-    SELECT MIN(price) as best
-    FROM rate_snapshots
-    WHERE rate_type = 'fixed'
-      AND price IS NOT NULL
-      AND price > 0.1
-      AND category = 'NaturalGas'
-      AND scraped_at >= datetime('now', '-7 days')
-  `).get();
-  const bestFixed = bestFixedRow?.best ? Math.round(bestFixedRow.best * 1000) / 1000 : 0.499;
+  const today = new Date().toISOString().slice(0, 10);
+  let bestFixed = null;
+  try {
+    bestFixed = getBestFixedRate('NaturalGas', 8, 1, today);
+  } catch (_) {}
+  if (!bestFixed) {
+    // Fallback to old query if no supplier_offers data yet
+    const bestFixedRow = db.prepare(`
+      SELECT MIN(price) as best
+      FROM rate_snapshots
+      WHERE rate_type = 'fixed'
+        AND price IS NOT NULL
+        AND price > 0.1
+        AND category = 'NaturalGas'
+        AND scraped_at >= datetime('now', '-7 days')
+    `).get();
+    bestFixed = bestFixedRow?.best ? Math.round(bestFixedRow.best * 1000) / 1000 : 0.499;
+  } else {
+    bestFixed = Math.round(bestFixed * 1000) / 1000;
+  }
 
   const result = {
     columbiaGasSco: getScoSeries(8),
@@ -230,8 +241,67 @@ const server = http.createServer(async (req, res) => {
     const territory = parseInt(url.searchParams.get('territory') || '8');
     const category = url.searchParams.get('category') || 'NaturalGas';
     const rateCode = parseInt(url.searchParams.get('rateCode') || '1');
+    const today = new Date().toISOString().slice(0, 10);
     
     try {
+      // Try DB first
+      let dbOffers = [];
+      try { dbOffers = getTodayOffers(today, category, territory, rateCode); } catch (_) {}
+
+      if (dbOffers.length > 0) {
+        const isMCF = territory === 1;
+        const suppliers = dbOffers.map(o => ({
+          name: o.supplier_name,
+          companyName: o.company_name,
+          price: isMCF && o.price ? Math.round(o.price / 10 * 10000) / 10000 : o.price,
+          priceUnit: 'ccf',
+          originalPrice: isMCF ? o.price : null,
+          originalUnit: isMCF ? 'mcf' : null,
+          rateType: o.rate_type,
+          termMonths: o.term_months,
+          earlyTerminationFee: o.etf,
+          monthlyFee: o.monthly_fee,
+          introPrice: o.is_intro === 1,
+          hasPromo: o.is_promo === 1,
+          offerDetails: o.offer_details,
+          promoDetails: o.promo_details,
+          introDetails: o.intro_details,
+          signUpUrl: o.sign_up_url,
+          phone: o.phone,
+          website: o.website,
+          offerId: o.offer_id,
+        }));
+
+        const result = {
+          territoryId: territory,
+          category,
+          rateCode,
+          scrapedAt: today,
+          defaultRate: null,
+          defaultRateText: null,
+          suppliers,
+          totalCount: suppliers.length,
+          isMCFConverted: isMCF,
+          source: 'db',
+        };
+
+        // Try to get defaultRate from rates-latest.json
+        try {
+          const data = JSON.parse(fs.readFileSync(path.join(__dirname, 'data/rates-latest.json'), 'utf8'));
+          const entry = data.find(x => x.territoryId === territory && x.category === category && x.rateCode === rateCode);
+          if (entry) {
+            result.defaultRate = entry.defaultRate;
+            result.defaultRateText = entry.defaultRateText;
+            result.scrapedAt = entry.scrapedAt;
+          }
+        } catch (_) {}
+
+        res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'public, max-age=300' });
+        res.end(JSON.stringify(result));
+        return;
+      }
+
+      // Fall back to rates-latest.json
       const data = JSON.parse(fs.readFileSync(path.join(__dirname, 'data/rates-latest.json'), 'utf8'));
       const entry = data.find(x => x.territoryId === territory && x.category === category && x.rateCode === rateCode);
       
@@ -260,6 +330,7 @@ const server = http.createServer(async (req, res) => {
         suppliers,
         totalCount: suppliers.length,
         isMCFConverted: isMCF,
+        source: 'file',
       };
       
       res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'public, max-age=300' });
