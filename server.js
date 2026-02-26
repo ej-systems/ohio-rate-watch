@@ -354,10 +354,35 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // Static file serving
+  const MIME_TYPES = {
+    '.html': 'text/html', '.css': 'text/css', '.js': 'text/javascript',
+    '.json': 'application/json', '.png': 'image/png', '.jpg': 'image/jpeg',
+    '.svg': 'image/svg+xml', '.gif': 'image/gif', '.ico': 'image/x-icon',
+    '.xml': 'application/xml', '.txt': 'text/plain', '.geojson': 'application/json',
+  };
+
+  let filePath = path.join(__dirname, url.pathname === '/' ? 'index.html' : url.pathname);
+  // Try .html extension for extensionless paths
+  if (!path.extname(filePath) && existsSync(filePath + '.html')) {
+    filePath = filePath + '.html';
+  }
+
+  try {
+    if (existsSync(filePath) && fs.statSync(filePath).isFile()) {
+      const ext = path.extname(filePath).toLowerCase();
+      const mime = MIME_TYPES[ext] || 'application/octet-stream';
+      const content = readFileSync(filePath);
+      res.writeHead(200, { 'Content-Type': mime, 'Cache-Control': 'public, max-age=3600' });
+      res.end(content);
+      return;
+    }
+  } catch (e) { /* fall through to 404 */ }
+
   res.writeHead(404, corsHeaders());
   res.end(JSON.stringify({ error: 'Not found' }));
 });
 
-server.listen(PORT, '127.0.0.1', () => {
-  console.log(`Ohio Rate Watch API on port ${PORT}`);
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`Ohio Rate Watch on port ${PORT}`);
 });
