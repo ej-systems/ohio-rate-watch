@@ -6,6 +6,7 @@
     "start": "node server.js"
   },
   "dependencies": {
+    "fast-xml-parser": "^5.4.1",
     "pg": "^8.13.0"
   },
   "engines": {

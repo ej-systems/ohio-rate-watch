@@ -354,6 +354,95 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // ---- Cron endpoint for daily scraper ----
+  if (req.method === 'POST' && url.pathname === '/api/cron/daily-check') {
+    const cronSecret = process.env.CRON_SECRET;
+    const authHeader = req.headers['x-cron-secret'] || '';
+    if (!cronSecret || authHeader !== cronSecret) {
+      res.writeHead(401, corsHeaders());
+      res.end(JSON.stringify({ error: 'Unauthorized' }));
+      return;
+    }
+
+    // Run scraper in background, return immediately
+    res.writeHead(200, corsHeaders());
+    res.end(JSON.stringify({ ok: true, message: 'Daily check started' }));
+
+    // Execute the scraper logic
+    (async () => {
+      try {
+        console.log('[cron] Daily check triggered via HTTP');
+        const { scrapeAllRates, detectChanges } = await import('./scraper/energy-choice-scraper.js');
+        const { insertSnapshot, insertSupplierOffers } = await import('./lib/history-store.js');
+
+        // Bypass cert issues
+        process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+
+        const current = await scrapeAllRates();
+        console.log(`[cron] Scraped ${current.length} rate pages`);
+
+        // Save latest to file (ephemeral but useful within container lifecycle)
+        const dataDir = path.join(__dirname, 'data');
+        fs.mkdirSync(dataDir, { recursive: true });
+        fs.writeFileSync(path.join(dataDir, 'rates-latest.json'), JSON.stringify(current, null, 2));
+
+        // Store to PostgreSQL
+        try {
+          const rowCount = await insertSnapshot(current);
+          console.log(`[cron] Stored ${rowCount} snapshot rows`);
+        } catch (err) {
+          console.error('[cron] WARNING: Failed to store snapshots:', err.message);
+        }
+
+        try {
+          const today = new Date().toISOString().slice(0, 10);
+          const offerCount = await insertSupplierOffers(today, current);
+          console.log(`[cron] Stored ${offerCount} offers for ${today}`);
+        } catch (err) {
+          console.error('[cron] WARNING: Failed to store offers:', err.message);
+        }
+
+        // Baseline comparison + email alerts
+        const baselineFile = path.join(dataDir, 'rates-baseline.json');
+        if (fs.existsSync(baselineFile)) {
+          const previous = JSON.parse(fs.readFileSync(baselineFile, 'utf8'));
+          const allChanges = detectChanges(previous, current);
+          const significant = allChanges.filter(c => {
+            if (c.type === 'default_rate') return true;
+            const absDiff = Math.abs(c.currRate - c.prevRate);
+            const pctDiff = Math.abs(parseFloat(c.changePct));
+            return pctDiff >= 5 && absDiff >= 0.01;
+          });
+          console.log(`[cron] ${allChanges.length} total changes, ${significant.length} significant`);
+
+          if (significant.length > 0 && process.env.RESEND_API_KEY) {
+            // Notify owner of changes
+            try {
+              const top = significant.slice(0, 10).map(c => c.summary).join('<br>');
+              await sendEmail(
+                'hello@ohioratewatch.com',
+                `[Rate Alert] ${significant.length} significant changes detected`,
+                `<p>Daily scraper found ${significant.length} significant rate changes:<br><br>${top}</p>`
+              );
+              console.log('[cron] Owner notification sent');
+            } catch (err) {
+              console.error('[cron] Failed to send owner notification:', err.message);
+            }
+          }
+        } else {
+          console.log('[cron] No baseline found, creating initial baseline');
+        }
+
+        // Update baseline
+        fs.writeFileSync(baselineFile, JSON.stringify(current, null, 2));
+        console.log('[cron] Daily check complete');
+      } catch (err) {
+        console.error('[cron] FATAL:', err.message);
+      }
+    })();
+    return;
+  }
+
   // Static file serving
   const MIME_TYPES = {
     '.html': 'text/html', '.css': 'text/css', '.js': 'text/javascript',
