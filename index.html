@@ -189,6 +189,14 @@
   footer { background: #111827; color: #9ca3af; padding: 28px 24px; text-align: center; font-size: 0.82rem; line-height: 1.8; }
   footer strong { color: #fff; }
   footer a { color: #60a5fa; text-decoration: none; }
+
+.tab-btn {
+  background: #f3f4f6; border: 1px solid #d1d5db; border-radius: 8px;
+  padding: 8px 14px; font-size: 0.88rem; font-weight: 600; cursor: pointer;
+  transition: all 0.15s;
+}
+.tab-btn:hover { background: #e5e7eb; }
+.tab-btn.active { background: #1565c0; color: #fff; border-color: #1565c0; }
 </style>
 </head>
 <body>
@@ -228,184 +236,25 @@
   <h2>Current Ohio Natural Gas Rates</h2>
   <p class="subtitle">Live data from PUCO Energy Choice Ohio — updated daily. These are certified rates from licensed suppliers.</p>
 
-  <div class="alert-strip">
-    ⚡ <strong>Columbia Gas customers:</strong> Default SCO rate is $1.071/ccf. Fixed-rate suppliers are currently offering up to 54% less — without giving up delivery service.
-  </div>
+  <!-- TERRITORY TABS -->
+<div id="territory-tabs" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px;">
+  <button class="tab-btn active" data-territory="8" onclick="switchTerritory(8)">
+    Columbia Gas <span style="font-size:0.75em;opacity:0.8;">(most of Ohio)</span>
+  </button>
+  <button class="tab-btn" data-territory="1" onclick="switchTerritory(1)">
+    Enbridge Gas <span style="font-size:0.75em;opacity:0.8;">(NE Ohio)</span>
+  </button>
+  <button class="tab-btn" data-territory="11" onclick="switchTerritory(11)">
+    CenterPoint <span style="font-size:0.75em;opacity:0.8;">(Dayton)</span>
+  </button>
+  <button class="tab-btn" data-territory="10" onclick="switchTerritory(10)">
+    Duke Energy <span style="font-size:0.75em;opacity:0.8;">(Cincinnati)</span>
+  </button>
+</div>
+<div id="territory-sco-bar" style="background:#fff3cd;border:1px solid #ffc107;border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:0.88rem;"></div>
+<div id="rates-loading" style="text-align:center;padding:40px;color:#6b7280;">Loading rates…</div>
+<div id="rates-table-wrap" style="display:none;"></div>
 
-  <p class="updated"><span class="live-dot"></span>Last updated: February 25, 2026 · Source: energychoice.ohio.gov</p>
-
-  <div class="tabs">
-    <div class="tab active">Columbia Gas (most of Ohio)</div>
-    <div class="tab">Duke Energy Ohio</div>
-    <div class="tab">Dominion/Enbridge Ohio</div>
-    <div class="tab">Vectren/CenterPoint</div>
-  </div>
-
-  <div class="rate-card">
-    <div class="rate-card-header">
-      <h3>Columbia Gas of Ohio — Residential (Rate Code 1)</h3>
-      <div>
-        <div class="sco-badge">Default SCO: $1.071/ccf</div>
-        <div class="sco-sub" style="text-align:right;margin-top:3px;">Effective through March 2026</div>
-      </div>
-    </div>
-
-    <!-- Explainer -->
-    <div class="rate-type-explainer">
-      <div class="rte-box fixed">
-        <strong>🔒 Fixed Rate</strong>
-        <p>Your price per ccf is locked for the contract term, even if the market rises. Best for predictability. Check the <strong>Early Term Fee</strong> before you sign — breaking a 12-month contract early can cost $75–$150.</p>
-      </div>
-      <div class="rte-box variable">
-        <strong>📈 Variable Rate</strong>
-        <p>Price adjusts month-to-month with the market. No long commitment. <strong>Watch out for intro rates</strong> — some companies advertise a low price that only lasts 1 month, then switches to market rate.</p>
-      </div>
-    </div>
-
-    <!-- Fixed Rate Section -->
-    <div class="rate-section-label fixed">🔒 Fixed Rate Plans</div>
-    <table class="rate-table">
-      <thead>
-        <tr>
-          <th>Supplier</th>
-          <th class="center">Rate ($/ccf)</th>
-          <th class="center">Term</th>
-          <th class="center">Early Term Fee</th>
-          <th class="center">Monthly Fee</th>
-          <th class="center"></th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td>
-            <strong>Santanna Energy Services</strong><br>
-            <span style="font-size:0.72rem;color:#6b7280;">(866) 325-0225</span><br>
-            <span class="flag-bundle">⚠️ Requires Gas + Electric bundle</span>
-          </td>
-          <td class="center-cell"><span class="price">$0.492</span><span class="savings-pill">Save 54%</span></td>
-          <td class="center-cell">12 mo.</td>
-          <td class="center-cell fee-charged">$100</td>
-          <td class="center-cell fee-free">$0</td>
-          <td class="center-cell"><a href="https://santannaenergyservices.com/offers/?strategyGuid=30ce3c13-a301-46a6-82fe-22c7a16589d3&amp;utm_source=energychoice.ohio.gov&amp;utm_medium=referral&amp;utm_campaign=FIX_12M_T1_COHOHG&amp;utm_content=gas" target="_blank" rel="noopener" style="font-size:0.72rem;padding:4px 10px;background:#1565c0;color:#fff;border-radius:6px;text-decoration:none;font-weight:600;white-space:nowrap;">Sign Up →</a></td>
-        </tr>
-        <tr>
-          <td>
-            <strong>Utility Gas and Power</strong><br>
-            <span style="font-size:0.72rem;color:#6b7280;">(855) 747-4931</span><br>
-            <span style="font-size:0.75rem;color:#6b7280;">Guaranteed fixed rate for 12 months</span>
-          </td>
-          <td class="center-cell"><span class="price">$0.499</span><span class="savings-pill">Save 53%</span></td>
-          <td class="center-cell">12 mo.</td>
-          <td class="center-cell fee-charged">$150</td>
-          <td class="center-cell fee-free">$0</td>
-          <td class="center-cell"><a href="https://www.utilitygasandpower.com/enroll?referral=a2a&amp;rate=4.99-12mos" target="_blank" rel="noopener" style="font-size:0.72rem;padding:4px 10px;background:#1565c0;color:#fff;border-radius:6px;text-decoration:none;font-weight:600;white-space:nowrap;">Sign Up →</a></td>
-        </tr>
-        <tr>
-          <td>
-            <strong>CleanSky Energy</strong><br>
-            <span style="font-size:0.72rem;color:#6b7280;">(888) 355-6205</span><br>
-            <span class="flag-green">🌱 100% Renewable</span>
-          </td>
-          <td class="center-cell"><span class="price">$0.579</span><span class="savings-pill">Save 46%</span></td>
-          <td class="center-cell">12 mo.</td>
-          <td class="center-cell fee-charged">$75</td>
-          <td class="center-cell fee-free">$0</td>
-          <td class="center-cell"><a href="https://signup.cleanskyenergy.com/rates?utility_id=81&amp;promocode=APPLESZERO" target="_blank" rel="noopener" style="font-size:0.72rem;padding:4px 10px;background:#1565c0;color:#fff;border-radius:6px;text-decoration:none;font-weight:600;white-space:nowrap;">Sign Up →</a></td>
-        </tr>
-        <tr>
-          <td>
-            <strong>Ohio Gas &amp; Electric</strong><br>
-            <span style="font-size:0.72rem;color:#6b7280;">(866) 706-7360</span><br>
-            <span style="font-size:0.75rem;color:#6b7280;">24-month lock-in, $0 ETF, $50/mo reward dollars</span>
-          </td>
-          <td class="center-cell"><span class="price">$0.639</span><span class="savings-pill">Save 40%</span></td>
-          <td class="center-cell">24 mo.</td>
-          <td class="center-cell fee-free">$0</td>
-          <td class="center-cell fee-free">$0</td>
-          <td class="center-cell"><a href="https://shopping.ohgande.com/cust/?PID=0ABD5027-BB93-47F9-92BF-7B84253C7078&amp;UID=D2873DA5-82F3-4F75-8298-505FA775E78A&amp;OID=5C461206-9E28-4D46-BFAD-B0ADA52E0AC1&amp;RFID=PUCO&amp;PUC=1&amp;STATE=OH&amp;SN=USG&amp;CT=G&amp;PromoCode=RATEBOARD" target="_blank" rel="noopener" style="font-size:0.72rem;padding:4px 10px;background:#1565c0;color:#fff;border-radius:6px;text-decoration:none;font-weight:600;white-space:nowrap;">Sign Up →</a></td>
-        </tr>
-        <tr>
-          <td colspan="6" style="background:#fafafa; padding:8px 16px; font-size:0.8rem; color:#c62828; font-weight:600; text-align:left;">
-            ⬆️ Columbia Gas Default Rate (SCO) — what you pay if you haven't switched
-          </td>
-        </tr>
-        <tr>
-          <td><em style="color:#888;">Columbia Gas Default (SCO)</em></td>
-          <td class="center-cell"><span class="price price-high">$1.071</span></td>
-          <td class="center-cell" style="color:#9ca3af;">Monthly</td>
-          <td class="center-cell" style="color:#9ca3af;">—</td>
-          <td class="center-cell" style="color:#9ca3af;">—</td>
-          <td class="center-cell"></td>
-        </tr>
-      </tbody>
-    </table>
-
-    <!-- Variable Rate Section -->
-    <div class="rate-section-label variable">📈 Variable Rate Plans</div>
-    <table class="rate-table">
-      <thead>
-        <tr>
-          <th>Supplier</th>
-          <th class="center">Rate ($/ccf)</th>
-          <th class="center">Term</th>
-          <th class="center">Early Term Fee</th>
-          <th class="center">Monthly Fee</th>
-          <th class="center"></th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr class="var-row promo-row">
-          <td>
-            <strong>Kratos Gas &amp; Power</strong><br>
-            <span style="font-size:0.72rem;color:#6b7280;">(800) 296-2203</span><br>
-            <span class="flag-promo">⚠️ 1-month intro rate only — price changes after Month 1</span>
-          </td>
-          <td class="center-cell"><span class="price">$0.459</span><span class="savings-pill">Save 57%</span></td>
-          <td class="center-cell">1 mo.</td>
-          <td class="center-cell fee-free">$0</td>
-          <td class="center-cell fee-free">$0</td>
-          <td class="center-cell"><a href="https://ohio.kratosgp.com/" target="_blank" rel="noopener" style="font-size:0.72rem;padding:4px 10px;background:#1565c0;color:#fff;border-radius:6px;text-decoration:none;font-weight:600;white-space:nowrap;">Sign Up →</a></td>
-        </tr>
-        <tr class="var-row">
-          <td>
-            <strong>American Power &amp; Gas of Ohio</strong><br>
-            <span style="font-size:0.72rem;color:#6b7280;">(888) 669-2365</span><br>
-            <span class="flag-intro">ℹ️ Introductory price — verify rate after intro period</span>
-          </td>
-          <td class="center-cell"><span class="price">$0.519</span><span class="savings-pill">Save 52%</span></td>
-          <td class="center-cell">24 mo.</td>
-          <td class="center-cell fee-free">$0</td>
-          <td class="center-cell fee-free">$0</td>
-          <td class="center-cell"><a href="https://americanpowerandgas.com/?page=2" target="_blank" rel="noopener" style="font-size:0.72rem;padding:4px 10px;background:#1565c0;color:#fff;border-radius:6px;text-decoration:none;font-weight:600;white-space:nowrap;">Sign Up →</a></td>
-        </tr>
-        <tr class="var-row">
-          <td>
-            <strong>Mercury Energy Marketing</strong><br>
-            <span style="font-size:0.72rem;color:#6b7280;">(800) 975-6372</span><br>
-            <span style="font-size:0.75rem;color:#6b7280;">Month-to-month, no commitment</span>
-          </td>
-          <td class="center-cell"><span class="price">$0.525</span><span class="savings-pill">Save 51%</span></td>
-          <td class="center-cell">1 mo.</td>
-          <td class="center-cell fee-free">$0</td>
-          <td class="center-cell fee-free">$0</td>
-          <td class="center-cell"><a href="https://mercuryenergyohio.com/columbia-gas-ohio-res/" target="_blank" rel="noopener" style="font-size:0.72rem;padding:4px 10px;background:#1565c0;color:#fff;border-radius:6px;text-decoration:none;font-weight:600;white-space:nowrap;">Sign Up →</a></td>
-        </tr>
-        <tr class="var-row">
-          <td>
-            <strong>Ohio Gas &amp; Electric</strong><br>
-            <span style="font-size:0.72rem;color:#6b7280;">(866) 706-7360</span><br>
-            <span style="font-size:0.75rem;color:#6b7280;">No-commitment plan + $50/mo reward dollars</span>
-          </td>
-          <td class="center-cell"><span class="price">$0.639</span><span class="savings-pill">Save 40%</span></td>
-          <td class="center-cell">None</td>
-          <td class="center-cell fee-free">$0</td>
-          <td class="center-cell fee-free">$0</td>
-          <td class="center-cell"><a href="https://shopping.ohgande.com/cust/?PID=8D43A666-E0B4-4A42-91F9-734729FFA1B7&amp;UID=D2873DA5-82F3-4F75-8298-505FA775E78A&amp;OID=5C461206-9E28-4D46-BFAD-B0ADA52E0AC1&amp;RFID=PUCO&amp;PUC=1&amp;STATE=OH&amp;SN=USG&amp;CT=G&amp;PromoCode=RATEBOARD" target="_blank" rel="noopener" style="font-size:0.72rem;padding:4px 10px;background:#1565c0;color:#fff;border-radius:6px;text-decoration:none;font-weight:600;white-space:nowrap;">Sign Up →</a></td>
-        </tr>
-      </tbody>
-    </table>
-    <div class="more-row"><table style="width:100%"><tr><td>View all 70+ Columbia Gas suppliers on PUCO Energy Choice →</td></tr></table></div>
-  </div>
 
   <p class="disclaimer">Rate data sourced from PUCO Energy Choice Ohio. Rates are updated daily but may not reflect real-time changes. Always verify current rates, terms, and fees directly with suppliers before enrolling. Savings estimates based on default SCO rate; actual savings depend on your usage and the rate after any intro period.</p>
 </section>
@@ -842,5 +691,107 @@
     subscribe(document.getElementById('footer-email').value, document.getElementById('footer-zip').value, document.getElementById('footer-btn'), document.getElementById('footer-msg'), false);
   });
 </script>
+
+<script>
+const TERRITORY_INFO = {
+  8:  { name: 'Columbia Gas of Ohio',    sco: 1.071, scoLabel: '$1.071/ccf (Feb 2026 SCO)' },
+  1:  { name: 'Enbridge Gas Ohio',       sco: 0.796, scoLabel: '$0.796/ccf equiv. (Feb 2026 SCO, converted from MCF)' },
+  11: { name: 'CenterPoint Energy Ohio', sco: 1.020, scoLabel: '$1.020/ccf (Feb 2026 SCO)' },
+  10: { name: 'Duke Energy Ohio',        sco: null,  scoLabel: 'GCR rate (moving to SCO April 2026)' },
+};
+
+let currentTerritory = 8;
+const ratesCache = {};
+
+function switchTerritory(tid) {
+  currentTerritory = tid;
+  document.querySelectorAll('.tab-btn').forEach(b => {
+    b.classList.toggle('active', parseInt(b.dataset.territory) === tid);
+  });
+  renderTerritory(tid);
+}
+
+async function renderTerritory(tid) {
+  const wrap = document.getElementById('rates-table-wrap');
+  const loading = document.getElementById('rates-loading');
+  const scoBar = document.getElementById('territory-sco-bar');
+  const info = TERRITORY_INFO[tid];
+  
+  loading.style.display = 'block';
+  wrap.style.display = 'none';
+
+  if (!ratesCache[tid]) {
+    try {
+      const r = await fetch('/api/rates?territory=' + tid + '&category=NaturalGas');
+      ratesCache[tid] = await r.json();
+    } catch(e) {
+      loading.textContent = 'Failed to load rates. Please try again.';
+      return;
+    }
+  }
+
+  const data = ratesCache[tid];
+  const suppliers = (data.suppliers || [])
+    .filter(s => s.price && s.price > 0)
+    .sort((a, b) => a.price - b.price);
+
+  // SCO bar
+  if (info.sco) {
+    const bestFixed = suppliers.find(s => s.rateType === 'fixed' && !s.introPrice);
+    const savings = bestFixed ? Math.round((1 - bestFixed.price / info.sco) * 100) : null;
+    scoBar.innerHTML = '<strong>' + info.name + '</strong> default rate: <strong>' + info.scoLabel + '</strong>' +
+      (savings ? ' \u2014 best fixed rate is <strong>' + savings + '% less</strong>' : '');
+  } else {
+    scoBar.innerHTML = '<strong>' + info.name + '</strong>: ' + info.scoLabel;
+  }
+
+  // Build table
+  let rows = '';
+  for (const s of suppliers.slice(0, 30)) {
+    const priceDisplay = '$' + s.price.toFixed(4) + '/ccf';
+    const savings = info.sco ? Math.round((1 - s.price / info.sco) * 100) : null;
+    const savBadge = savings && savings > 0
+      ? '<span style="background:#d1fae5;color:#065f46;padding:1px 6px;border-radius:4px;font-size:0.75em;margin-left:6px;">-' + savings + '%</span>'
+      : '';
+    const mfee = s.monthlyFee ? '+$' + s.monthlyFee + '/mo' : '';
+    const etf = s.earlyTerminationFee ? 'ETF $' + s.earlyTerminationFee : 'No ETF';
+    const promoBadge = s.introPrice ? '<span style="background:#fef3c7;color:#92400e;padding:1px 5px;border-radius:4px;font-size:0.72em;">INTRO</span> ' : '';
+    const renewBadge = s.renewablePct >= 100 ? '<span style="background:#d1fae5;color:#065f46;padding:1px 5px;border-radius:4px;font-size:0.72em;">\ud83c\udf3f 100%</span> ' : '';
+    
+    rows += '<tr>' +
+      '<td style="font-weight:600;">' + promoBadge + renewBadge + s.name + '</td>' +
+      '<td style="font-weight:700;color:#1565c0;">' + priceDisplay + savBadge + (mfee ? '<br><span style="font-size:0.8em;color:#6b7280;">' + mfee + '</span>' : '') + '</td>' +
+      '<td>' + (s.rateType === 'fixed' ? '\ud83d\udd12 Fixed' : '\ud83d\udcc8 Variable') + '</td>' +
+      '<td>' + (s.termMonths || '\u2014') + ' mo</td>' +
+      '<td style="font-size:0.82em;color:#6b7280;">' + etf + '</td>' +
+      (s.signUpUrl ? '<td><a href="' + s.signUpUrl + '" target="_blank" rel="noopener" style="color:#1565c0;font-weight:600;font-size:0.85em;">Sign up \u2192</a></td>' : '<td></td>') +
+      '</tr>';
+  }
+
+  wrap.innerHTML =
+    '<p style="font-size:0.82rem;color:#6b7280;margin-bottom:8px;">Showing ' + Math.min(suppliers.length, 30) + ' of ' + suppliers.length + ' plans, sorted by rate. Verify all terms directly with the supplier before enrolling.' +
+    (data.isMCFConverted ? ' Prices converted from $/MCF to $/CCF for comparison.' : '') + '</p>' +
+    '<div style="overflow-x:auto;">' +
+    '<table style="width:100%;border-collapse:collapse;font-size:0.88rem;">' +
+    '<thead><tr style="background:#f3f4f6;text-align:left;">' +
+    '<th style="padding:8px 10px;">Supplier</th>' +
+    '<th style="padding:8px 10px;">Rate</th>' +
+    '<th style="padding:8px 10px;">Type</th>' +
+    '<th style="padding:8px 10px;">Term</th>' +
+    '<th style="padding:8px 10px;">ETF</th>' +
+    '<th style="padding:8px 10px;"></th>' +
+    '</tr></thead>' +
+    '<tbody>' + rows + '</tbody>' +
+    '</table></div>' +
+    '<p style="margin-top:12px;font-size:0.82rem;"><a href="https://www.energychoice.ohio.gov/ApplesToApplesComparision.aspx?Category=NaturalGas&TerritoryId=' + tid + '&RateCode=1" target="_blank" rel="noopener" style="color:#1565c0;">View all plans on PUCO Energy Choice Ohio \u2192</a></p>';
+
+  loading.style.display = 'none';
+  wrap.style.display = 'block';
+}
+
+// Load default territory on page load
+document.addEventListener('DOMContentLoaded', function() { renderTerritory(8); });
+</script>
+
 </body>
 </html>

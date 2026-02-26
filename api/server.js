@@ -8,10 +8,14 @@ import http from 'http';
 import { URL } from 'url';
 import fs from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
+import Database from 'better-sqlite3';
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const PORT = process.env.PORT || 3001;
 const LOG_FILE = '/var/log/ratewatch/signups.csv';
+const DB_PATH = path.join(__dirname, 'data', 'rates-history.db');
 
 if (!RESEND_API_KEY) {
   console.error('ERROR: RESEND_API_KEY env var required');
@@ -22,6 +26,15 @@ if (!RESEND_API_KEY) {
 fs.mkdirSync(path.dirname(LOG_FILE), { recursive: true });
 if (!fs.existsSync(LOG_FILE)) {
   fs.writeFileSync(LOG_FILE, 'timestamp,email,zip\n');
+}
+
+// Lazy DB connection for chart data
+let _db;
+function getDb() {
+  if (!_db) {
+    _db = new Database(DB_PATH, { readonly: true });
+  }
+  return _db;
 }
 
 function corsHeaders() {
@@ -107,6 +120,88 @@ function isRateLimited(ip) {
   return false;
 }
 
+/**
+ * Build chart data from real DB queries.
+ * Returns { columbiaGasSco, enbridgeGasSco, centerpointSco, henryHub, bestFixed, events }
+ */
+function buildChartData(longterm = false) {
+  const db = getDb();
+
+  function getScoSeries(territory_id) {
+    return db.prepare(`
+      SELECT strftime('%Y-%m', date) as month, rate
+      FROM rate_history
+      WHERE territory_id = ? AND type = 'sco'
+      ORDER BY date ASC
+    `).all(territory_id).map(r => ({ date: r.month, value: r.rate }));
+  }
+
+  const hhStart = longterm ? '2000-01-01' : '2018-01-01';
+  const henryHub = db.prepare(`
+    SELECT strftime('%Y-%m', scraped_at) as month,
+           ROUND(AVG(price) / 10.0, 4) as value
+    FROM rate_snapshots
+    WHERE supplier_name = 'Henry Hub Spot Price'
+      AND price IS NOT NULL
+      AND scraped_at >= ?
+    GROUP BY month
+    ORDER BY month ASC
+  `).all(hhStart).map(r => ({ date: r.month, value: r.value }));
+
+  const bestFixedRow = db.prepare(`
+    SELECT MIN(price) as best
+    FROM rate_snapshots
+    WHERE rate_type = 'fixed'
+      AND price IS NOT NULL
+      AND price > 0.1
+      AND category = 'NaturalGas'
+      AND scraped_at >= datetime('now', '-7 days')
+  `).get();
+  const bestFixed = bestFixedRow?.best ? Math.round(bestFixedRow.best * 1000) / 1000 : 0.499;
+
+  const result = {
+    columbiaGasSco: getScoSeries(8),
+    enbridgeGasSco: getScoSeries(1),
+    centerpointSco: getScoSeries(11),
+    henryHub,
+    bestFixed,
+    events: [
+      { date: '2021-04', label: 'Post-Uri Spike', icon: '❄️' },
+      { date: '2022-04', label: 'Russia-Ukraine', icon: '💥' },
+      { date: '2022-10', label: 'Storm Elliott', icon: '❄️' },
+      { date: '2025-10', label: 'PUCO RPA Increase', icon: '📋' },
+    ],
+  };
+
+  if (longterm) {
+    // EIA Ohio Residential 2000–2017 as pre-SCO reference baseline
+    result.eiaOhioRef = db.prepare(`
+      SELECT strftime('%Y-%m', scraped_at) as month,
+             ROUND(AVG(sco_rate), 4) as value
+      FROM rate_snapshots
+      WHERE territory_id = 0
+        AND rate_type = 'reference'
+        AND sco_rate IS NOT NULL
+        AND scraped_at >= '2000-01-01'
+        AND scraped_at < '2018-01-01'
+      GROUP BY month
+      ORDER BY month ASC
+    `).all().map(r => ({ date: r.month, value: r.value }));
+
+    result.pucoBoundary = '2018-01';
+    result.events = [
+      { date: '2005-09', label: 'Katrina/Rita Spike', icon: '🌀' },
+      { date: '2008-07', label: '2008 Price Peak', icon: '📈' },
+      { date: '2012-04', label: 'Shale Gas Lows', icon: '⛏️' },
+      { date: '2021-04', label: 'Post-Uri Spike', icon: '❄️' },
+      { date: '2022-10', label: 'Energy Crisis Peak', icon: '💥' },
+      { date: '2025-10', label: 'PUCO RPA Increase', icon: '📋' },
+    ];
+  }
+
+  return result;
+}
+
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://localhost`);
 
@@ -116,75 +211,61 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // Historical chart data endpoint
+  // Historical chart data endpoint — real PUCO SCO data from DB
   if (req.method === 'GET' && url.pathname === '/api/history/chart-data') {
-    const chartData = {
-      sco: [
-        { date: '2020-01', value: 0.380 },
-        { date: '2020-04', value: 0.350 },
-        { date: '2020-07', value: 0.330 },
-        { date: '2020-10', value: 0.370 },
-        { date: '2021-01', value: 0.410 },
-        { date: '2021-04', value: 0.470 },
-        { date: '2021-07', value: 0.520 },
-        { date: '2021-10', value: 0.580 },
-        { date: '2022-01', value: 0.650 },
-        { date: '2022-04', value: 0.720 },
-        { date: '2022-07', value: 0.780 },
-        { date: '2022-10', value: 0.880 },
-        { date: '2023-01', value: 0.950 },
-        { date: '2023-04', value: 0.820 },
-        { date: '2023-07', value: 0.710 },
-        { date: '2023-10', value: 0.690 },
-        { date: '2024-01', value: 0.680 },
-        { date: '2024-04', value: 0.660 },
-        { date: '2024-07', value: 0.720 },
-        { date: '2024-10', value: 0.750 },
-        { date: '2025-01', value: 0.790 },
-        { date: '2025-04', value: 0.850 },
-        { date: '2025-07', value: 0.920 },
-        { date: '2025-10', value: 0.980 },
-        { date: '2026-01', value: 1.040 },
-        { date: '2026-02', value: 1.071 },
-      ],
-      henryHub: [
-        { date: '2020-01', value: 0.210 },
-        { date: '2020-04', value: 0.170 },
-        { date: '2020-07', value: 0.180 },
-        { date: '2020-10', value: 0.290 },
-        { date: '2021-01', value: 0.270 },
-        { date: '2021-04', value: 0.280 },
-        { date: '2021-07', value: 0.370 },
-        { date: '2021-10', value: 0.520 },
-        { date: '2022-01', value: 0.430 },
-        { date: '2022-04', value: 0.640 },
-        { date: '2022-07', value: 0.750 },
-        { date: '2022-10', value: 0.600 },
-        { date: '2023-01', value: 0.350 },
-        { date: '2023-04', value: 0.220 },
-        { date: '2023-07', value: 0.260 },
-        { date: '2023-10', value: 0.290 },
-        { date: '2024-01', value: 0.300 },
-        { date: '2024-04', value: 0.190 },
-        { date: '2024-07', value: 0.230 },
-        { date: '2024-10', value: 0.260 },
-        { date: '2025-01', value: 0.350 },
-        { date: '2025-04', value: 0.380 },
-        { date: '2025-07', value: 0.400 },
-        { date: '2025-10', value: 0.420 },
-        { date: '2026-01', value: 0.440 },
-        { date: '2026-02', value: 0.450 },
-      ],
-      bestFixed: 0.499,
-      events: [
-        { date: '2021-04', label: 'Post-Uri Spike', icon: '❄️' },
-        { date: '2022-04', label: 'Russia-Ukraine', icon: '💥' },
-        { date: '2022-10', label: 'Storm Elliott', icon: '❄️' },
-        { date: '2025-10', label: 'PUCO RPA Increase', icon: '📋' },
-      ],
-    };
-    res.writeHead(200, corsHeaders());
-    res.end(JSON.stringify(chartData));
+    try {
+      const longterm = url.searchParams.get('range') === 'longterm';
+      const chartData = buildChartData(longterm);
+      res.writeHead(200, corsHeaders());
+      res.end(JSON.stringify(chartData));
+    } catch (err) {
+      console.error('[chart-data] DB error:', err.message);
+      res.writeHead(500, corsHeaders());
+      res.end(JSON.stringify({ error: 'Failed to load chart data' }));
+    }
+    return;
+  }
+
+  if (req.method === 'GET' && url.pathname === '/api/rates') {
+    const territory = parseInt(url.searchParams.get('territory') || '8');
+    const category = url.searchParams.get('category') || 'NaturalGas';
+    
+    try {
+      const data = JSON.parse(fs.readFileSync(path.join(__dirname, 'data/rates-latest.json'), 'utf8'));
+      const entry = data.find(x => x.territoryId === territory && x.category === category);
+      
+      if (!entry) {
+        res.writeHead(404, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Territory not found' }));
+        return;
+      }
+      
+      const isMCF = territory === 1;
+      const suppliers = (entry.suppliers || []).map(s => ({
+        ...s,
+        price: isMCF && s.price ? Math.round(s.price / 10 * 10000) / 10000 : s.price,
+        priceUnit: 'ccf',
+        originalPrice: isMCF ? s.price : null,
+        originalUnit: isMCF ? 'mcf' : null,
+      }));
+      
+      const result = {
+        territoryId: territory,
+        category,
+        scrapedAt: entry.scrapedAt,
+        defaultRate: entry.defaultRate,
+        defaultRateText: entry.defaultRateText,
+        suppliers,
+        totalCount: suppliers.length,
+        isMCFConverted: isMCF,
+      };
+      
+      res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'public, max-age=300' });
+      res.end(JSON.stringify(result));
+    } catch (e) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: e.message }));
+    }
     return;
   }
 
