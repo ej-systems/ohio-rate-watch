@@ -1,0 +1,24 @@
+name: Daily Rate Scraper
+
+on:
+  schedule:
+    # Run at 2 AM UTC daily (same as Vultr cron)
+    - cron: '0 2 * * *'
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  trigger-scraper:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger daily check
+        run: |
+          response=$(curl -s -o /dev/null -w "%{http_code}" -X POST \
+            https://ohioratewatch.com/api/cron/daily-check \
+            -H "Content-Type: application/json" \
+            -H "X-Cron-Secret: ${{ secrets.CRON_SECRET }}")
+          echo "Response code: $response"
+          if [ "$response" != "200" ]; then
+            echo "Failed to trigger scraper"
+            exit 1
+          fi
+          echo "Scraper triggered successfully"
