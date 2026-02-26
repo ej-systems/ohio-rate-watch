@@ -742,6 +742,7 @@ async function renderTerritory(tid) {
   
   loading.style.display = 'block';
   wrap.style.display = 'none';
+  currentRateFilter = 'all';
 
   const cacheKey = tid + '-' + currentRateCode;
   if (!ratesCache[cacheKey]) {
@@ -782,7 +783,7 @@ async function renderTerritory(tid) {
     const promoBadge = s.introPrice ? '<span style="background:#fef3c7;color:#92400e;padding:1px 5px;border-radius:4px;font-size:0.72em;">INTRO</span> ' : '';
     const renewBadge = s.renewablePct >= 100 ? '<span style="background:#d1fae5;color:#065f46;padding:1px 5px;border-radius:4px;font-size:0.72em;">\ud83c\udf3f 100%</span> ' : '';
     
-    rows += '<tr>' +
+    rows += '<tr data-ratetype="' + s.rateType + '">' +
       '<td style="font-weight:600;">' + promoBadge + renewBadge + s.name + '</td>' +
       '<td style="font-weight:700;color:#1565c0;">' + priceDisplay + savBadge + (mfee ? '<br><span style="font-size:0.8em;color:#6b7280;">' + mfee + '</span>' : '') + '</td>' +
       '<td>' + (s.rateType === 'fixed' ? '\ud83d\udd12 Fixed' : '\ud83d\udcc8 Variable') + '</td>' +
@@ -795,6 +796,12 @@ async function renderTerritory(tid) {
   wrap.innerHTML =
     '<p style="font-size:0.82rem;color:#6b7280;margin-bottom:8px;">Showing ' + Math.min(suppliers.length, 30) + ' of ' + suppliers.length + ' plans, sorted by rate. Verify all terms directly with the supplier before enrolling.' +
     (data.isMCFConverted ? ' Prices converted from $/MCF to $/CCF for comparison.' : '') + '</p>' +
+    '<div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;flex-wrap:wrap;">' +
+    '<span style="font-size:0.82rem;color:#6b7280;margin-right:4px;">Filter: </span>' +
+    '<button class="rate-filter-btn active" data-filter="all" onclick="filterRates(\'all\')" style="border:1px solid #d1d5db;border-radius:20px;padding:3px 12px;font-size:0.8rem;cursor:pointer;background:#f3f4f6;font-weight:600;">All</button>' +
+    '<button class="rate-filter-btn" data-filter="fixed" onclick="filterRates(\'fixed\')" style="border:1px solid #bfdbfe;border-radius:20px;padding:3px 12px;font-size:0.8rem;cursor:pointer;background:#eff6ff;color:#1d4ed8;font-weight:600;">&#x1F512; Fixed</button>' +
+    '<button class="rate-filter-btn" data-filter="variable" onclick="filterRates(\'variable\')" style="border:1px solid #fed7aa;border-radius:20px;padding:3px 12px;font-size:0.8rem;cursor:pointer;background:#fff7ed;color:#c2410c;font-weight:600;">&#x1F4C8; Variable</button>' +
+    '</div>' +
     '<div style="overflow-x:auto;">' +
     '<table style="width:100%;border-collapse:collapse;font-size:0.88rem;">' +
     '<thead><tr style="background:#f3f4f6;text-align:left;">' +
@@ -814,6 +821,25 @@ async function renderTerritory(tid) {
 }
 
 // Load default territory on page load
+
+  // Rate type filter
+  let currentRateFilter = 'all';
+  window.filterRates = function(type) {
+    currentRateFilter = type;
+    document.querySelectorAll('.rate-filter-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.filter === type);
+    });
+    document.querySelectorAll('#rates-table-wrap table tbody tr').forEach(row => {
+      const rt = row.dataset.ratetype;
+      row.style.display = (type === 'all' || rt === type) ? '' : 'none';
+    });
+    // Update count label
+    const visible = [...document.querySelectorAll('#rates-table-wrap table tbody tr')]
+      .filter(r => r.style.display !== 'none').length;
+    const countEl = document.getElementById('rates-visible-count');
+    if (countEl) countEl.textContent = visible;
+  };
+
 document.addEventListener('DOMContentLoaded', function() { renderTerritory(8); });
 </script>
 
