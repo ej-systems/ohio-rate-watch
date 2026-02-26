@@ -225,6 +225,7 @@
   <form class="signup-form" id="hero-form">
     <input type="email" id="hero-email" placeholder="Your email address" required>
     <input type="text" class="zip" id="hero-zip" placeholder="Zip code" maxlength="5">
+    <input type="number" step="0.001" min="0" max="5" id="hero-rate" placeholder="Current rate $/ccf" style="max-width:140px;min-width:120px;flex:0 0 140px;" title="Your gas supply rate ($/ccf) — find it on your bill">
     <button type="submit" id="hero-btn">Get Free Alerts →</button>
   </form>
   <div id="hero-msg"></div>
@@ -641,9 +642,10 @@
 <div class="footer-cta">
   <h2>Ready to stop overpaying?</h2>
   <p>Join free. Get notified the moment a better rate is available for your area.</p>
-  <form class="signup-form" id="footer-form" style="max-width:480px; margin:0 auto;">
+  <form class="signup-form" id="footer-form" style="max-width:520px; margin:0 auto;">
     <input type="email" id="footer-email" placeholder="Your email address" required>
     <input type="text" class="zip" id="footer-zip" placeholder="Zip" maxlength="5">
+    <input type="number" step="0.001" min="0" max="5" id="footer-rate" placeholder="Rate $/ccf" style="max-width:120px;min-width:100px;flex:0 0 120px;" title="Your gas supply rate ($/ccf) — find it on your bill">
     <button type="submit" id="footer-btn">Get Free Alerts →</button>
   </form>
   <div id="footer-msg" style="margin-top:12px;font-weight:600;"></div>
@@ -672,20 +674,27 @@
 </footer>
 
 <script>
-  async function subscribe(email, zip, btn, msgEl, isHero) {
+  const TERRITORY_DISPLAY = { columbia: 'Columbia Gas of Ohio', enbridge: 'Enbridge Gas Ohio', centerpoint: 'CenterPoint Energy Ohio', duke: 'Duke Energy Ohio' };
+
+  async function subscribe(email, zip, currentRate, btn, msgEl, isHero) {
     btn.disabled = true;
     btn.textContent = 'Signing up...';
     msgEl.textContent = '';
     msgEl.className = '';
     try {
+      const payload = { email, zip };
+      if (currentRate) payload.current_rate = parseFloat(currentRate);
       const res = await fetch('/api/subscribe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, zip }),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
       if (res.ok) {
-        msgEl.textContent = "✓ You're on the list! Check your email for confirmation.";
+        const tName = data.territory ? TERRITORY_DISPLAY[data.territory] : null;
+        msgEl.textContent = tName
+          ? `✅ We'll watch ${tName} rates for you. Check your email to confirm.`
+          : "✅ You're on the list! Check your email to confirm.";
         msgEl.className = isHero ? 'form-success' : '';
         if (!isHero) msgEl.style.color = '#a5d6a7';
         btn.closest('form').reset();
@@ -704,11 +713,11 @@
 
   document.getElementById('hero-form').addEventListener('submit', (e) => {
     e.preventDefault();
-    subscribe(document.getElementById('hero-email').value, document.getElementById('hero-zip').value, document.getElementById('hero-btn'), document.getElementById('hero-msg'), true);
+    subscribe(document.getElementById('hero-email').value, document.getElementById('hero-zip').value, document.getElementById('hero-rate').value, document.getElementById('hero-btn'), document.getElementById('hero-msg'), true);
   });
   document.getElementById('footer-form').addEventListener('submit', (e) => {
     e.preventDefault();
-    subscribe(document.getElementById('footer-email').value, document.getElementById('footer-zip').value, document.getElementById('footer-btn'), document.getElementById('footer-msg'), false);
+    subscribe(document.getElementById('footer-email').value, document.getElementById('footer-zip').value, document.getElementById('footer-rate').value, document.getElementById('footer-btn'), document.getElementById('footer-msg'), false);
   });
 </script>
 

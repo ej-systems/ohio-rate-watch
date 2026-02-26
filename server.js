@@ -10,6 +10,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import pg from 'pg';
+import crypto from 'crypto';
 import { readFileSync, existsSync } from 'fs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -44,11 +45,36 @@ if (!fs.existsSync(LOG_FILE)) {
 
 const pool = new pg.Pool({ connectionString: DATABASE_URL });
 
+// Load ZIP → territory mapping
+const zipTerritoryMap = JSON.parse(readFileSync(path.join(__dirname, 'zip-territory.json'), 'utf8'));
+const TERRITORY_IDS = { columbia: 8, enbridge: 1, centerpoint: 11, duke: 10 };
+const TERRITORY_NAMES = { columbia: 'Columbia Gas of Ohio', enbridge: 'Enbridge Gas Ohio', centerpoint: 'CenterPoint Energy Ohio', duke: 'Duke Energy Ohio' };
+
 // Run schema migrations on startup (idempotent)
 pool.query(`
   ALTER TABLE supplier_offers ADD COLUMN IF NOT EXISTS is_renewable BOOLEAN DEFAULT FALSE;
   ALTER TABLE supplier_offers ADD COLUMN IF NOT EXISTS renewable_type TEXT;
 `).then(() => console.log('[db] schema migrations ok')).catch(e => console.error('[db] migration error:', e.message));
+
+pool.query(`
+  CREATE TABLE IF NOT EXISTS subscribers (
+    id SERIAL PRIMARY KEY,
+    email TEXT NOT NULL,
+    zip TEXT,
+    territory TEXT,
+    territory_id INTEGER,
+    current_rate REAL,
+    min_savings_pct INTEGER DEFAULT 15,
+    confirmed BOOLEAN DEFAULT FALSE,
+    unsubscribe_token TEXT UNIQUE NOT NULL,
+    confirm_token TEXT UNIQUE,
+    last_alerted_at TIMESTAMPTZ,
+    last_alerted_rate REAL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(email)
+  );
+  CREATE INDEX IF NOT EXISTS idx_subscribers_territory ON subscribers(territory) WHERE confirmed = TRUE;
+`).then(() => console.log('[db] subscribers table ok')).catch(e => console.error('[db] subscribers migration error:', e.message));
 
 pool.query(`
   CREATE TABLE IF NOT EXISTS city_bills (
@@ -445,7 +471,7 @@ const server = http.createServer(async (req, res) => {
           return;
         }
 
-        const { email, zip } = JSON.parse(body);
+        const { email, zip, current_rate, min_savings_pct } = JSON.parse(body);
 
         if (!email || !email.includes('@') || !email.includes('.')) {
           res.writeHead(400, allHeaders());
@@ -453,17 +479,113 @@ const server = http.createServer(async (req, res) => {
           return;
         }
 
-        await handleSignup(email.toLowerCase().trim(), zip?.trim() || '');
+        const cleanEmail = email.toLowerCase().trim();
+        const cleanZip = zip?.trim() || null;
+        const rate = current_rate ? parseFloat(current_rate) : null;
+        const minPct = min_savings_pct ? parseInt(min_savings_pct) : 15;
 
-        console.log(`[signup] ${email} ${zip || ''} ${new Date().toISOString()}`);
+        // ZIP → territory lookup
+        const territory = cleanZip ? (zipTerritoryMap[cleanZip] || null) : null;
+        const territoryId = territory ? (TERRITORY_IDS[territory] || null) : null;
+
+        const unsubToken = crypto.randomUUID();
+        const confirmToken = crypto.randomUUID();
+
+        // Insert into DB
+        await pool.query(`
+          INSERT INTO subscribers (email, zip, territory, territory_id, current_rate, min_savings_pct, unsubscribe_token, confirm_token)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+          ON CONFLICT (email) DO UPDATE SET
+            zip = COALESCE(EXCLUDED.zip, subscribers.zip),
+            territory = COALESCE(EXCLUDED.territory, subscribers.territory),
+            territory_id = COALESCE(EXCLUDED.territory_id, subscribers.territory_id),
+            current_rate = COALESCE(EXCLUDED.current_rate, subscribers.current_rate),
+            min_savings_pct = EXCLUDED.min_savings_pct,
+            confirm_token = CASE WHEN subscribers.confirmed THEN subscribers.confirm_token ELSE EXCLUDED.confirm_token END,
+            confirmed = subscribers.confirmed
+        `, [cleanEmail, cleanZip, territory, territoryId, rate, minPct, unsubToken, confirmToken]);
+
+        // Get the confirm_token (may differ if already confirmed)
+        const { rows } = await pool.query('SELECT confirm_token, confirmed FROM subscribers WHERE email = $1', [cleanEmail]);
+        const sub = rows[0];
+
+        // Send confirmation email if not already confirmed
+        if (!sub.confirmed && sub.confirm_token) {
+          const utilityName = territory ? TERRITORY_NAMES[territory] : null;
+          const utilityLine = utilityName ? `<p style="color:#444;line-height:1.6;">Based on your ZIP code, we'll watch <strong>${utilityName}</strong> rates for you.</p>` : '';
+          await sendEmail(cleanEmail, 'Confirm your Ohio Rate Watch alerts', `
+            <div style="font-family:-apple-system,sans-serif;max-width:560px;margin:0 auto;padding:32px 24px;">
+              <img src="https://ohioratewatch.com/logo.png" alt="Ohio Rate Watch" style="height:40px;margin-bottom:24px;" onerror="this.style.display='none'">
+              <h2 style="color:#1565c0;margin-bottom:8px;">Confirm your alerts</h2>
+              <p style="color:#444;line-height:1.6;">Thanks for signing up for <strong>Ohio Rate Watch</strong>.</p>
+              ${utilityLine}
+              <p style="color:#444;line-height:1.6;">Click below to confirm — we won't send alerts until you do.</p>
+              <div style="text-align:center;margin:28px 0;">
+                <a href="https://ohioratewatch.com/confirm?token=${sub.confirm_token}" style="display:inline-block;background:#1565c0;color:#fff;padding:14px 32px;border-radius:8px;text-decoration:none;font-weight:700;font-size:1rem;">Confirm My Alerts →</a>
+              </div>
+              <p style="color:#999;font-size:0.82rem;margin-top:32px;border-top:1px solid #eee;padding-top:16px;">If you didn't sign up, just ignore this email.<br><br>Ohio Rate Watch · A project of EJ Systems LLC · Cleveland, Ohio</p>
+            </div>
+          `);
+        }
+
+        // Notify owner
+        await sendEmail(
+          'hello@ohioratewatch.com',
+          `New signup: ${cleanEmail}${cleanZip ? ` (${cleanZip})` : ''}`,
+          `<p>New signup:<br><strong>${cleanEmail}</strong>${cleanZip ? `<br>Zip: ${cleanZip}` : ''}${territory ? `<br>Territory: ${territory}` : ''}${rate ? `<br>Current rate: $${rate}/ccf` : ''}<br>${new Date().toLocaleString('en-US', { timeZone: 'America/New_York' })} ET</p>`
+        );
+
+        // CSV backup
+        const row = `${new Date().toISOString()},${cleanEmail},${cleanZip || ''}\n`;
+        fs.appendFileSync(LOG_FILE, row);
+
+        console.log(`[signup] ${cleanEmail} ${cleanZip || ''} territory=${territory || 'unknown'} ${new Date().toISOString()}`);
         res.writeHead(200, allHeaders());
-        res.end(JSON.stringify({ ok: true, message: "You're on the list!" }));
+        res.end(JSON.stringify({ ok: true, success: true, territory: territory || null, message: "You're on the list!" }));
       } catch (err) {
         console.error('[error]', err.message);
         res.writeHead(500, allHeaders());
         res.end(JSON.stringify({ error: 'Something went wrong, please try again.' }));
       }
     });
+    return;
+  }
+
+  // Confirmation endpoint
+  if (req.method === 'GET' && url.pathname === '/confirm') {
+    const token = url.searchParams.get('token');
+    let html;
+    if (token) {
+      const { rowCount } = await pool.query('UPDATE subscribers SET confirmed = TRUE, confirm_token = NULL WHERE confirm_token = $1', [token]);
+      if (rowCount > 0) {
+        html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Confirmed — Ohio Rate Watch</title></head><body style="font-family:-apple-system,sans-serif;display:flex;justify-content:center;align-items:center;min-height:100vh;background:#f8f9fa;margin:0;"><div style="background:#fff;border-radius:14px;padding:48px 40px;max-width:480px;text-align:center;box-shadow:0 2px 20px rgba(0,0,0,0.08);"><div style="font-size:3rem;margin-bottom:16px;">✅</div><h1 style="color:#1565c0;font-size:1.5rem;margin-bottom:12px;">You're confirmed!</h1><p style="color:#555;line-height:1.6;margin-bottom:24px;">We'll email you when rates drop in your area. No spam, ever.</p><a href="https://ohioratewatch.com" style="display:inline-block;background:#1565c0;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:700;">← Back to Ohio Rate Watch</a></div></body></html>`;
+      } else {
+        html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Invalid Link — Ohio Rate Watch</title></head><body style="font-family:-apple-system,sans-serif;display:flex;justify-content:center;align-items:center;min-height:100vh;background:#f8f9fa;margin:0;"><div style="background:#fff;border-radius:14px;padding:48px 40px;max-width:480px;text-align:center;box-shadow:0 2px 20px rgba(0,0,0,0.08);"><h1 style="color:#666;font-size:1.3rem;margin-bottom:12px;">This link has already been used or is invalid.</h1><p style="color:#999;margin-bottom:24px;">If you've already confirmed, you're all set!</p><a href="https://ohioratewatch.com" style="display:inline-block;background:#1565c0;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:700;">← Back to Ohio Rate Watch</a></div></body></html>`;
+      }
+    } else {
+      html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Invalid Link — Ohio Rate Watch</title></head><body style="font-family:-apple-system,sans-serif;display:flex;justify-content:center;align-items:center;min-height:100vh;background:#f8f9fa;margin:0;"><div style="background:#fff;border-radius:14px;padding:48px 40px;max-width:480px;text-align:center;box-shadow:0 2px 20px rgba(0,0,0,0.08);"><h1 style="color:#666;font-size:1.3rem;">Missing confirmation token.</h1><a href="https://ohioratewatch.com" style="display:inline-block;margin-top:20px;background:#1565c0;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:700;">← Back to Ohio Rate Watch</a></div></body></html>`;
+    }
+    res.writeHead(200, { 'Content-Type': 'text/html', ...allHeaders({ 'Content-Type': 'text/html' }) });
+    res.end(html);
+    return;
+  }
+
+  // Unsubscribe endpoint
+  if (req.method === 'GET' && url.pathname === '/unsubscribe') {
+    const token = url.searchParams.get('token');
+    let html;
+    if (token) {
+      const { rowCount } = await pool.query('DELETE FROM subscribers WHERE unsubscribe_token = $1', [token]);
+      if (rowCount > 0) {
+        html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Unsubscribed — Ohio Rate Watch</title></head><body style="font-family:-apple-system,sans-serif;display:flex;justify-content:center;align-items:center;min-height:100vh;background:#f8f9fa;margin:0;"><div style="background:#fff;border-radius:14px;padding:48px 40px;max-width:480px;text-align:center;box-shadow:0 2px 20px rgba(0,0,0,0.08);"><h1 style="color:#555;font-size:1.3rem;margin-bottom:12px;">You've been unsubscribed.</h1><p style="color:#999;line-height:1.6;margin-bottom:24px;">We're sorry to see you go. You can always sign up again if you change your mind.</p><a href="https://ohioratewatch.com" style="display:inline-block;background:#1565c0;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:700;">← Back to Ohio Rate Watch</a></div></body></html>`;
+      } else {
+        html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Unsubscribed — Ohio Rate Watch</title></head><body style="font-family:-apple-system,sans-serif;display:flex;justify-content:center;align-items:center;min-height:100vh;background:#f8f9fa;margin:0;"><div style="background:#fff;border-radius:14px;padding:48px 40px;max-width:480px;text-align:center;box-shadow:0 2px 20px rgba(0,0,0,0.08);"><h1 style="color:#555;font-size:1.3rem;margin-bottom:12px;">Already unsubscribed.</h1><p style="color:#999;margin-bottom:24px;">This link has already been used or is no longer valid.</p><a href="https://ohioratewatch.com" style="display:inline-block;background:#1565c0;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:700;">← Back to Ohio Rate Watch</a></div></body></html>`;
+      }
+    } else {
+      html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Unsubscribe — Ohio Rate Watch</title></head><body style="font-family:-apple-system,sans-serif;display:flex;justify-content:center;align-items:center;min-height:100vh;background:#f8f9fa;margin:0;"><div style="background:#fff;border-radius:14px;padding:48px 40px;max-width:480px;text-align:center;box-shadow:0 2px 20px rgba(0,0,0,0.08);"><h1 style="color:#555;font-size:1.3rem;">Missing unsubscribe token.</h1><a href="https://ohioratewatch.com" style="display:inline-block;margin-top:20px;background:#1565c0;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:700;">← Back to Ohio Rate Watch</a></div></body></html>`;
+    }
+    res.writeHead(200, { 'Content-Type': 'text/html', ...allHeaders({ 'Content-Type': 'text/html' }) });
+    res.end(html);
     return;
   }
 

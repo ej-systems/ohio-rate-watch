@@ -244,7 +244,7 @@ async function scrapeCityBills() {
 }
 
 // ---------------------------------------------------------------------------
-// Load subscribers from CSV
+// Load subscribers from CSV (legacy fallback)
 // ---------------------------------------------------------------------------
 function loadSubscribers() {
   if (!fs.existsSync(SIGNUPS_FILE)) {
@@ -252,7 +252,6 @@ function loadSubscribers() {
     return [];
   }
   const lines = fs.readFileSync(SIGNUPS_FILE, 'utf8').trim().split('\n');
-  // Skip header row
   return lines.slice(1)
     .filter(Boolean)
     .map(line => {
@@ -262,15 +261,146 @@ function loadSubscribers() {
     .filter(s => s.email && s.email.includes('@'));
 }
 
-// ---------------------------------------------------------------------------
-// Deduplicate subscribers (keep latest signup per email)
-// ---------------------------------------------------------------------------
 function dedupeSubscribers(subscribers) {
   const seen = new Map();
   for (const s of subscribers) {
-    seen.set(s.email, s); // later entries overwrite earlier
+    seen.set(s.email, s);
   }
   return [...seen.values()];
+}
+
+// ---------------------------------------------------------------------------
+// Territory config
+// ---------------------------------------------------------------------------
+const TERRITORY_CONFIG = {
+  columbia:     { id: 8,  name: 'Columbia Gas of Ohio' },
+  enbridge:     { id: 1,  name: 'Enbridge Gas Ohio' },
+  centerpoint:  { id: 11, name: 'CenterPoint Energy Ohio' },
+  duke:         { id: 10, name: 'Duke Energy Ohio' },
+};
+
+// ---------------------------------------------------------------------------
+// Build personalized alert email
+// ---------------------------------------------------------------------------
+function buildPersonalAlertEmail(sub, bestOffer, savingsPct, baseline, utilityName, monthlySavings) {
+  const baselineLabel = sub.current_rate
+    ? `Your reported rate: $${sub.current_rate.toFixed(3)}/ccf`
+    : `${utilityName} default (SCO) rate`;
+
+  return `
+  <div style="font-family:-apple-system,sans-serif;max-width:580px;margin:0 auto;padding:32px 24px;background:#f8f9fa;">
+    <div style="background:#fff;border-radius:12px;padding:32px;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
+      <img src="https://ohioratewatch.com/logo.png" alt="Ohio Rate Watch" style="height:40px;margin-bottom:24px;" onerror="this.style.display='none'">
+      <h2 style="color:#1565c0;margin-bottom:8px;">💡 You could save ${savingsPct}% on your gas bill</h2>
+      <p style="color:#444;line-height:1.6;">We found a better rate for <strong>${utilityName}</strong> customers.</p>
+
+      <div style="background:#f0fdf4;border:2px solid #86efac;border-radius:10px;padding:20px;margin:20px 0;">
+        <div style="font-size:0.85rem;color:#666;margin-bottom:4px;">Your baseline: ${baselineLabel}</div>
+        <div style="font-size:0.85rem;color:#666;margin-bottom:12px;">Baseline rate: <strong>$${baseline.toFixed(3)}/ccf</strong></div>
+        <div style="font-size:1.4rem;font-weight:900;color:#16a34a;margin-bottom:4px;">$${bestOffer.price.toFixed(3)}/ccf</div>
+        <div style="font-size:0.9rem;color:#374151;"><strong>${bestOffer.supplier_name}</strong> · ${bestOffer.term_months || '?'}-month fixed · ${bestOffer.etf ? '$' + bestOffer.etf + ' ETF' : 'No ETF'}</div>
+        <div style="margin-top:12px;padding-top:12px;border-top:1px solid #bbf7d0;font-size:0.9rem;color:#166534;">
+          <strong>Estimated savings: ~$${monthlySavings.toFixed(0)}/month</strong> <span style="color:#6b7280;font-size:0.8rem;">(based on 10 Mcf/month usage)</span>
+        </div>
+      </div>
+
+      ${bestOffer.sign_up_url ? `<div style="text-align:center;margin:24px 0;"><a href="${bestOffer.sign_up_url}" style="display:inline-block;background:#16a34a;color:#fff;padding:14px 32px;border-radius:8px;text-decoration:none;font-weight:700;font-size:1rem;">View This Offer →</a></div>` : ''}
+
+      <p style="color:#555;font-size:0.88rem;line-height:1.6;">
+        <a href="https://ohioratewatch.com" style="color:#1565c0;font-weight:600;">See all plans on Ohio Rate Watch →</a>
+      </p>
+
+      <p style="color:#888;font-size:0.8rem;margin-top:24px;line-height:1.5;">
+        Always verify current rates directly with the supplier before enrolling.
+      </p>
+      <p style="color:#999;font-size:0.78rem;margin-top:20px;border-top:1px solid #eee;padding-top:16px;">
+        Ohio Rate Watch · A project of EJ Systems LLC · Cleveland, Ohio<br>
+        <a href="tel:8334317283" style="color:#1565c0;">833.431.RATE</a> ·
+        <a href="https://ohioratewatch.com" style="color:#1565c0;">ohioratewatch.com</a> ·
+        <a href="https://ohioratewatch.com/unsubscribe?token=${sub.unsubscribe_token}" style="color:#999;">Unsubscribe</a>
+      </p>
+    </div>
+  </div>`;
+}
+
+// ---------------------------------------------------------------------------
+// Send subscriber alerts based on DB subscribers + current rates
+// ---------------------------------------------------------------------------
+async function sendSubscriberAlerts(dbPool, currentRates) {
+  const territories = Object.entries(TERRITORY_CONFIG);
+
+  for (const [tKey, tConfig] of territories) {
+    // Find SCO rate for this territory
+    const territoryPage = currentRates.find(p => p.territoryId === tConfig.id && p.category === 'NaturalGas');
+    const scoRate = territoryPage?.defaultRate || null;
+
+    // Find best fixed rate (no bundle, no intro) from DB for today
+    const today = new Date().toISOString().slice(0, 10);
+    const { rows: offerRows } = await dbPool.query(`
+      SELECT supplier_name, price, term_months, etf, sign_up_url
+      FROM supplier_offers
+      WHERE territory_id = $1 AND category = 'NaturalGas' AND rate_code = '1'
+        AND rate_type = 'fixed' AND is_intro = FALSE
+        AND price > 0.1
+        AND scraped_date = $2
+        AND (offer_details NOT ILIKE '%bundle%' AND offer_details NOT ILIKE '%electric%gas%' AND offer_details NOT ILIKE '%gas%electric%')
+      ORDER BY price ASC LIMIT 1
+    `, [tConfig.id, today]);
+
+    if (offerRows.length === 0) {
+      log(`[alerts] No fixed offers found for ${tKey} on ${today}, skipping`);
+      continue;
+    }
+    const bestOffer = offerRows[0];
+
+    // Get confirmed subscribers for this territory
+    const { rows: subs } = await dbPool.query(
+      'SELECT * FROM subscribers WHERE confirmed = TRUE AND (territory = $1 OR territory IS NULL)',
+      [tKey]
+    );
+
+    log(`[alerts] ${tKey}: SCO=${scoRate}, best=$${bestOffer.price}, ${subs.length} subscribers`);
+
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+    for (const sub of subs) {
+      // For null-territory subs, only send if this is their first territory pass (use columbia as default)
+      if (!sub.territory && tKey !== 'columbia') continue;
+
+      const baseline = sub.current_rate || scoRate;
+      if (!baseline || baseline <= 0) continue;
+
+      const savingsPct = Math.round((1 - bestOffer.price / baseline) * 100);
+      if (savingsPct < (sub.min_savings_pct || 15)) continue;
+
+      // Throttle: skip if alerted recently and rate hasn't changed much
+      if (sub.last_alerted_at) {
+        const lastAlerted = new Date(sub.last_alerted_at);
+        if (lastAlerted > sevenDaysAgo) continue;
+        if (sub.last_alerted_rate) {
+          const rateDiff = Math.abs(bestOffer.price - sub.last_alerted_rate) / sub.last_alerted_rate;
+          if (rateDiff <= 0.03) continue;
+        }
+      }
+
+      const monthlySavings = (baseline - bestOffer.price) * 100; // 10 Mcf = 100 ccf
+
+      try {
+        const subject = `💡 You could save ${savingsPct}% on your gas bill — Ohio Rate Watch`;
+        const html = buildPersonalAlertEmail(sub, bestOffer, savingsPct, baseline, tConfig.name, monthlySavings);
+        await sendEmail(sub.email, subject, html);
+
+        await dbPool.query(
+          'UPDATE subscribers SET last_alerted_at = NOW(), last_alerted_rate = $1 WHERE id = $2',
+          [bestOffer.price, sub.id]
+        );
+        log(`[alerts] Sent alert to ${sub.email} (${tKey}, save ${savingsPct}%)`);
+        await new Promise(r => setTimeout(r, 500)); // rate limit
+      } catch (err) {
+        log(`[alerts] Failed to send to ${sub.email}: ${err.message}`);
+      }
+    }
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -584,32 +714,14 @@ async function main() {
   fs.writeFileSync(BASELINE_FILE, JSON.stringify(current, null, 2));
   log('Baseline updated');
 
-  // Load and dedupe subscribers
-  const subscribers = dedupeSubscribers(loadSubscribers());
-  log(`Sending alerts to ${subscribers.length} subscribers...`);
-
-  if (subscribers.length === 0) {
-    log('No subscribers to notify.');
-    process.exit(0);
+  // Send personalized subscriber alerts from DB
+  try {
+    log('Running personalized subscriber alerts...');
+    await sendSubscriberAlerts(getPool(), current);
+    log('Subscriber alerts complete');
+  } catch (err) {
+    log('WARNING: Subscriber alerts failed:', err.message);
   }
-
-  // Send alerts
-  let sent = 0, failed = 0;
-  for (const sub of subscribers) {
-    try {
-      const subject = `⚡ Rate Alert: ${changes.length} change${changes.length > 1 ? 's' : ''} detected — Ohio Rate Watch`;
-      const html = buildAlertEmail(changes, sub);
-      await sendEmail(sub.email, subject, html);
-      sent++;
-      // Polite rate limit: 2 emails/second
-      await new Promise(r => setTimeout(r, 500));
-    } catch (err) {
-      log(`Failed to send to ${sub.email}: ${err.message}`);
-      failed++;
-    }
-  }
-
-  log(`Alert run complete: ${sent} sent, ${failed} failed`);
 
   // Scrape PUCO city bills
   try {
