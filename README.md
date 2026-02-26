@@ -62,7 +62,7 @@ See [docs/methodology.md](docs/methodology.md) for full details on scraping, val
 ### Setup
 
 ```bash
-git clone https://github.com/paradosi/ohio-rate-watch.git
+git clone https://github.com/ej-systems/ohio-rate-watch.git
 cd ohio-rate-watch
 npm install
 cp .env.example .env
