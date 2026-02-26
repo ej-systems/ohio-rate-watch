@@ -823,12 +823,14 @@
 <script>
 window.addEventListener('load', function() {
   // Complete county → utility mapping — PUCO + Safe Gas Ohio (Sep 2025)
+  // 'mixed' = county has multiple utility providers; use zip lookup or check your bill
   const COUNTY_UTILITY = {
     // Enbridge Gas Ohio — NE Ohio (former Dominion East Ohio)
-    'Ashtabula':'enbridge','Lake':'enbridge','Cuyahoga':'enbridge','Geauga':'enbridge',
-    'Trumbull':'enbridge','Mahoning':'enbridge','Portage':'enbridge','Summit':'enbridge',
-    'Medina':'enbridge','Lorain':'enbridge','Stark':'enbridge','Carroll':'enbridge',
-    'Columbiana':'enbridge','Jefferson':'enbridge','Harrison':'enbridge',
+    'Ashtabula':'enbridge','Lake':'enbridge','Geauga':'enbridge',
+    'Trumbull':'enbridge','Mahoning':'enbridge','Portage':'enbridge',
+    'Carroll':'enbridge','Columbiana':'enbridge','Jefferson':'enbridge','Harrison':'enbridge',
+    // Split counties — Enbridge in urban core, Columbia Gas in surrounding areas
+    'Cuyahoga':'mixed','Summit':'mixed','Lorain':'mixed','Medina':'mixed','Stark':'mixed',
     // CenterPoint Energy Ohio — SW Ohio / Dayton metro (former Vectren)
     'Montgomery':'centerpoint','Greene':'centerpoint','Clark':'centerpoint',
     'Miami':'centerpoint','Champaign':'centerpoint','Darke':'centerpoint','Preble':'centerpoint',
@@ -889,7 +891,8 @@ window.addEventListener('load', function() {
     columbia:    { name:'Columbia Gas of Ohio',    color:'#1565c0', sco:'$1.071/ccf', customers:'~1.4M customers' },
     enbridge:    { name:'Enbridge Gas Ohio',       color:'#7b1fa2', sco:'$0.796/ccf equiv.', customers:'~1.2M customers' },
     centerpoint: { name:'CenterPoint Energy Ohio', color:'#f57c00', sco:'$1.02/ccf',  customers:'~320K customers' },
-    duke:        { name:'Duke Energy Ohio',        color:'#16a34a', sco:'GCR rate (SCO April 2026)', customers:'~130K customers' }
+    duke:        { name:'Duke Energy Ohio',        color:'#16a34a', sco:'GCR rate (SCO April 2026)', customers:'~130K customers' },
+    mixed:       { name:'Multiple utilities',      color:'#9e9e9e', sco:'varies', customers:'Check your bill' }
   };
 
   function getUtility(name) {
@@ -938,11 +941,10 @@ window.addEventListener('load', function() {
           var info = UTILITY_INFO[uKey];
           var coops = getCoops(name);
           var coopTip = coops.length ? '<br><span style="font-size:0.75em;color:#b45309;">⚠ Co-op area in county</span>' : '';
-          layer.bindTooltip(
-            '<strong>' + name + ' County</strong><br>' + info.name +
-            '<br><span style="font-size:0.8em;color:#666;">' + info.customers + '</span>' + coopTip,
-            { sticky: true, className: 'county-tooltip' }
-          );
+          var tooltipContent = uKey === 'mixed'
+            ? '<strong>' + name + ' County</strong><br><span style="color:#888;">Multiple utilities — enter ZIP below</span>'
+            : '<strong>' + name + ' County</strong><br>' + info.name + '<br><span style="font-size:0.8em;color:#666;">' + info.customers + '</span>' + coopTip;
+          layer.bindTooltip(tooltipContent, { sticky: true, className: 'county-tooltip' });
           layer.on('mouseover', function(e) {
             e.target.setStyle(highlightStyle(feature));
             e.target.bringToFront();
@@ -951,8 +953,12 @@ window.addEventListener('load', function() {
             geojsonLayer.resetStyle(e.target);
           });
           layer.on('click', function() {
-            var territory = uKey === 'columbia' ? 'columbia' : uKey === 'enbridge' ? 'enbridge' : uKey === 'centerpoint' ? 'centerpoint' : 'duke';
-            layer.bindPopup('<strong>' + info.name + '</strong><br>Current rate: ' + info.sco + '<br>' + info.customers + '<br><a href="/?territory=' + territory + '" style="color:#1565c0;font-weight:600;">Compare rates →</a>').openPopup();
+            if (uKey === 'mixed') {
+              layer.bindPopup('<strong>' + name + ' County</strong><br>⚠ Multiple utility providers serve this county.<br>Enter your ZIP code below for a more accurate result.').openPopup();
+            } else {
+              var territory = uKey === 'columbia' ? 'columbia' : uKey === 'enbridge' ? 'enbridge' : uKey === 'centerpoint' ? 'centerpoint' : 'duke';
+              layer.bindPopup('<strong>' + info.name + '</strong><br>Current rate: ' + info.sco + '<br>' + info.customers + '<br><a href="/?territory=' + territory + '" style="color:#1565c0;font-weight:600;">Compare rates →</a>').openPopup();
+            }
           });
         }
       }).addTo(map);
@@ -1014,6 +1020,22 @@ window.addEventListener('load', function() {
             + localCoops.join(', ') + '. If your bill is from a cooperative, Energy Choice does not apply — you cannot switch suppliers.'
             + '</div>'
           : '';
+        if (uKey === 'mixed') {
+          resultDiv.innerHTML =
+            '<div style="padding:10px 12px;background:#fff8e1;border:1px solid #ffd54f;border-radius:8px;">' +
+            '<strong>⚠ ' + county + ' County has multiple utility providers.</strong><br>' +
+            '<span style="font-size:0.85rem;color:#555;">Utility service areas don\'t follow county lines here. Your provider is either ' +
+            '<strong>Enbridge Gas Ohio</strong> (Cleveland and inner suburbs) or ' +
+            '<strong>Columbia Gas of Ohio</strong> (Parma, Brook Park, and surrounding areas).<br>' +
+            '<strong>Check your gas bill</strong> — the utility name appears at the top — then use the tabs below to compare rates.</span>' +
+            '</div>' +
+            '<div style="margin-top:8px;display:flex;gap:10px;">' +
+            '<a href="/?territory=enbridge" style="color:#7b1fa2;font-weight:600;font-size:0.85rem;">Compare Enbridge suppliers →</a>' +
+            '<a href="/?territory=columbia" style="color:#1565c0;font-weight:600;font-size:0.85rem;">Compare Columbia Gas suppliers →</a>' +
+            '</div>';
+          return;
+        }
+
         var rateHtml = uKey === 'duke'
           ? '<span style="color:#6b7280;">GCR rate (moving to SCO April 2026)</span>'
           : 'Current SCO: <strong>' + info.sco + '</strong>';
