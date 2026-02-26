@@ -183,6 +183,59 @@ async function scrapeCityBills() {
     }
 
     log(`Upserted ${upserted} city bill rows for ${reportMonth}`);
+
+    // Also scrape ScheduleTrends historical data
+    try {
+      log('Fetching PUCO ScheduleTrends CSV...');
+      const trendRes = await fetch('https://analytics.das.ohio.gov/t/PUCPUB/views/UtilityRateSurvey/ScheduleTrends.csv');
+      if (!trendRes.ok) throw new Error(`ScheduleTrends: ${trendRes.status}`);
+      const trendRows = parseCSV(await trendRes.text());
+      log(`Parsed ${trendRows.length} ScheduleTrends rows`);
+
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS city_bill_history (
+          id SERIAL PRIMARY KEY,
+          report_date TEXT NOT NULL,
+          month_label TEXT NOT NULL,
+          city TEXT NOT NULL,
+          county TEXT,
+          total_charge REAL,
+          local_tax REAL,
+          scraped_at TIMESTAMPTZ DEFAULT NOW(),
+          UNIQUE(report_date, city)
+        );
+      `);
+
+      let trendCount = 0;
+      for (const row of trendRows) {
+        const city = (row['City Name'] || '').trim();
+        const monthLabel = (row['Month of Rate Month'] || '').trim();
+        const rawDate = (row['Report Date'] || '').trim();
+        const county = (row['County'] || '').trim();
+        const totalCharge = parseFloat((row['Total Charge'] || '').replace(/[$,]/g, ''));
+        const localTaxStr = (row['Avg. Local Tax'] || '').replace(/[%,]/g, '');
+        const localTax = parseFloat(localTaxStr);
+
+        if (!city || !rawDate) continue;
+        const dateParts = rawDate.split('/');
+        if (dateParts.length !== 3) continue;
+        const reportDate = `${dateParts[2]}-${dateParts[0].padStart(2,'0')}-${dateParts[1].padStart(2,'0')}`;
+
+        await pool.query(`
+          INSERT INTO city_bill_history (report_date, month_label, city, county, total_charge, local_tax)
+          VALUES ($1,$2,$3,$4,$5,$6)
+          ON CONFLICT (report_date, city) DO UPDATE SET
+            month_label=EXCLUDED.month_label, county=EXCLUDED.county,
+            total_charge=EXCLUDED.total_charge, local_tax=EXCLUDED.local_tax, scraped_at=NOW()
+        `, [reportDate, monthLabel, city, county,
+            isNaN(totalCharge)?null:totalCharge, isNaN(localTax)?null:localTax]);
+        trendCount++;
+      }
+      log(`Upserted ${trendCount} schedule trend rows`);
+    } catch (err) {
+      log('WARNING: ScheduleTrends scraper failed:', err.message);
+    }
+
     return upserted;
   } finally {
     await pool.end();

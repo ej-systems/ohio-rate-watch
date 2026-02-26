@@ -68,6 +68,20 @@ pool.query(`
   );
 `).then(() => console.log('[db] city_bills table ok')).catch(e => console.error('[db] city_bills migration error:', e.message));
 
+pool.query(`
+  CREATE TABLE IF NOT EXISTS city_bill_history (
+    id SERIAL PRIMARY KEY,
+    report_date TEXT NOT NULL,
+    month_label TEXT NOT NULL,
+    city TEXT NOT NULL,
+    county TEXT,
+    total_charge REAL,
+    local_tax REAL,
+    scraped_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(report_date, city)
+  );
+`).then(() => console.log('[db] city_bill_history table ok')).catch(e => console.error('[db] city_bill_history migration error:', e.message));
+
 function allHeaders(headers = {}) {
   return {
     'Access-Control-Allow-Origin': '*',
@@ -525,6 +539,46 @@ const server = http.createServer(async (req, res) => {
           errors.push(`City bills: ${err.message}`);
         }
 
+        // Scrape PUCO ScheduleTrends (historical bill data)
+        let trendCount = 0;
+        try {
+          const trendRes = await fetch('https://analytics.das.ohio.gov/t/PUCPUB/views/UtilityRateSurvey/ScheduleTrends.csv');
+          if (!trendRes.ok) throw new Error(`ScheduleTrends: ${trendRes.status}`);
+          const trendRows = parseCSVSimple(await trendRes.text());
+          console.log(`[cron] ScheduleTrends: ${trendRows.length} rows`);
+
+          for (const row of trendRows) {
+            const city = (row['City Name'] || '').trim();
+            const monthLabel = (row['Month of Rate Month'] || '').trim();
+            const rawDate = (row['Report Date'] || '').trim();
+            const county = (row['County'] || '').trim();
+            const totalCharge = parseFloat((row['Total Charge'] || '').replace(/[$,]/g, ''));
+            const localTaxStr = (row['Avg. Local Tax'] || '').replace(/[%,]/g, '');
+            const localTax = parseFloat(localTaxStr);
+
+            if (!city || !rawDate) continue;
+
+            // Parse date from "9/5/2025" → "2025-09-05"
+            const dateParts = rawDate.split('/');
+            if (dateParts.length !== 3) continue;
+            const reportDate = `${dateParts[2]}-${dateParts[0].padStart(2,'0')}-${dateParts[1].padStart(2,'0')}`;
+
+            await pool.query(`
+              INSERT INTO city_bill_history (report_date, month_label, city, county, total_charge, local_tax)
+              VALUES ($1,$2,$3,$4,$5,$6)
+              ON CONFLICT (report_date, city) DO UPDATE SET
+                month_label=EXCLUDED.month_label, county=EXCLUDED.county,
+                total_charge=EXCLUDED.total_charge, local_tax=EXCLUDED.local_tax, scraped_at=NOW()
+            `, [reportDate, monthLabel, city, county,
+                isNaN(totalCharge)?null:totalCharge, isNaN(localTax)?null:localTax]);
+            trendCount++;
+          }
+          console.log(`[cron] Upserted ${trendCount} schedule trend rows`);
+        } catch (err) {
+          console.error('[cron] ScheduleTrends scraper error:', err.message);
+          errors.push(`ScheduleTrends: ${err.message}`);
+        }
+
         // Get DB row counts
         try {
           const r1 = await pool.query('SELECT COUNT(*) as cnt FROM rate_snapshots');
@@ -595,6 +649,7 @@ const server = http.createServer(async (req, res) => {
             { name: '📸 Snapshot Rows Added', value: `${snapshotRows.toLocaleString()}`, inline: true },
             { name: '📋 Offers Stored', value: `${offersStored.toLocaleString()}`, inline: true },
             { name: '🏘️ City Bills', value: `${cityBillCount}`, inline: true },
+            { name: '📈 Bill Trends', value: `${trendCount}`, inline: true },
             { name: '🔄 Rate Changes', value: `${totalChanges} total, ${significantChanges} significant`, inline: true },
             { name: '🗃️ DB: rate_snapshots', value: dbSnapshots, inline: true },
             { name: '🗃️ DB: supplier_offers', value: dbOffers, inline: true },
@@ -672,6 +727,40 @@ const server = http.createServer(async (req, res) => {
       }));
     } catch (err) {
       console.error('[api/city-bills] error:', err.message);
+      res.writeHead(500, allHeaders());
+      res.end(JSON.stringify({ error: err.message }));
+    }
+    return;
+  }
+
+  // ---- City Bill History API ----
+  if (req.method === 'GET' && url.pathname === '/api/city-history') {
+    try {
+      const city = url.searchParams.get('city');
+      if (!city) {
+        res.writeHead(400, allHeaders());
+        res.end(JSON.stringify({ error: 'city parameter required' }));
+        return;
+      }
+      const { rows } = await pool.query(`
+        SELECT report_date, month_label, city, county, total_charge, local_tax
+        FROM city_bill_history
+        WHERE LOWER(city) = LOWER($1)
+        ORDER BY report_date ASC
+      `, [city]);
+      res.writeHead(200, allHeaders({ 'Cache-Control': 'public, max-age=3600' }));
+      res.end(JSON.stringify({
+        city: city,
+        history: rows.map(r => ({
+          reportDate: r.report_date,
+          monthLabel: r.month_label,
+          county: r.county,
+          totalCharge: r.total_charge,
+          localTax: r.local_tax,
+        })),
+      }));
+    } catch (err) {
+      console.error('[api/city-history] error:', err.message);
       res.writeHead(500, allHeaders());
       res.end(JSON.stringify({ error: err.message }));
     }
