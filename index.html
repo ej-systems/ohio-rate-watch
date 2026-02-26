@@ -817,29 +817,50 @@ async function renderTerritory(tid) {
     varPlans.slice(0, 10).forEach(s => { rows += buildRow(s); });
   }
 
+  // Explanation cards text varies slightly for Duke (GCR vs SCO)
+  var fixedCardText = 'Your price per ccf is locked for the contract term, even if the market rises. Best for predictability. Check the <strong style="color:#1d4ed8;">Early Term Fee</strong> before you sign \u2014 breaking a 12-month contract early can cost $75\u2013$150.';
+  var varCardText   = 'Price adjusts month-to-month with the market. No long commitment. <strong style="color:#c2410c;">Watch out for intro rates</strong> \u2014 some companies advertise a low price that only lasts 1\u00a0month, then switches to market rate.';
+  var scoRowHtml = info.sco
+    ? '<tr style="background:#fff8f8;"><td style="padding:12px 16px;color:#6b7280;font-style:italic;">' +
+        '<span style="color:#1565c0;font-weight:600;">\u2139\ufe0f ' + info.name + ' Default Rate (SCO) \u2014 what you pay if you haven\u2019t switched</span>' +
+      '</td>' +
+      '<td style="padding:12px 16px;font-weight:800;color:#dc2626;font-size:1.1rem;">$' + info.sco.toFixed(3) + '</td>' +
+      '<td style="padding:12px 16px;color:#6b7280;">Monthly</td>' +
+      '<td style="padding:12px 16px;color:#6b7280;">\u2014</td>' +
+      '<td style="padding:12px 16px;color:#6b7280;">\u2014</td>' +
+      '<td></td></tr>'
+    : '';
+
   wrap.innerHTML =
-    '<p style="font-size:0.82rem;color:#6b7280;margin-bottom:10px;">Showing plans sorted by rate.' +
-    (data.isMCFConverted ? ' Enbridge prices converted from $/MCF to $/CCF.' : '') +
-    ' Verify all terms directly with the supplier before enrolling.</p>' +
+    // Explanation cards
+    '<div style="display:flex;gap:14px;margin-bottom:20px;flex-wrap:wrap;">' +
+      '<div class="rte-box fixed" style="flex:1;min-width:220px;">' +
+        '<strong>\ud83d\udd12 Fixed Rate</strong>' +
+        '<p>' + fixedCardText + '</p>' +
+      '</div>' +
+      '<div class="rte-box variable" style="flex:1;min-width:220px;">' +
+        '<strong>\ud83d\udcc8 Variable Rate</strong>' +
+        '<p>' + varCardText + '</p>' +
+      '</div>' +
+    '</div>' +
+    // Filter pills
     '<div style="display:flex;align-items:center;gap:6px;margin-bottom:12px;flex-wrap:wrap;">' +
     '<span style="font-size:0.82rem;color:#6b7280;margin-right:4px;">Filter:</span>' +
     '<button class="rate-filter-btn active" data-filter="all" onclick="filterRates(\'all\')" style="border:1px solid #d1d5db;border-radius:20px;padding:4px 13px;font-size:0.8rem;cursor:pointer;background:#f3f4f6;font-weight:600;">All</button>' +
     '<button class="rate-filter-btn" data-filter="fixed" onclick="filterRates(\'fixed\')" style="border:1px solid #bfdbfe;border-radius:20px;padding:4px 13px;font-size:0.8rem;cursor:pointer;background:#eff6ff;color:#1d4ed8;font-weight:600;">\ud83d\udd12 Fixed</button>' +
     '<button class="rate-filter-btn" data-filter="variable" onclick="filterRates(\'variable\')" style="border:1px solid #fed7aa;border-radius:20px;padding:4px 13px;font-size:0.8rem;cursor:pointer;background:#fff7ed;color:#c2410c;font-weight:600;">\ud83d\udcc8 Variable</button>' +
+    (data.isMCFConverted ? '<span style="font-size:0.78rem;color:#6b7280;margin-left:6px;">Prices shown per ccf (converted from mcf)</span>' : '') +
     '</div>' +
+    // Table
     '<div style="overflow-x:auto;">' +
     '<table class="rate-table">' +
     '<thead><tr>' +
-    '<th>Supplier</th>' +
-    '<th>Rate ($/ccf)</th>' +
-    '<th>Term</th>' +
-    '<th>Early Term Fee</th>' +
-    '<th>Monthly Fee</th>' +
-    '<th></th>' +
+    '<th>Supplier</th><th>Rate ($/ccf)</th><th>Term</th><th>Early Term Fee</th><th>Monthly Fee</th><th></th>' +
     '</tr></thead>' +
-    '<tbody>' + rows + '</tbody>' +
+    '<tbody>' + rows + scoRowHtml + '</tbody>' +
     '</table></div>' +
-    '<p style="margin-top:12px;font-size:0.82rem;"><a href="https://www.energychoice.ohio.gov/ApplesToApplesComparision.aspx?Category=NaturalGas&TerritoryId=' + tid + '&RateCode=' + currentRateCode + '" target="_blank" rel="noopener" style="color:#1565c0;">View all plans on PUCO Energy Choice Ohio \u2192</a></p>';
+    '<p style="margin-top:10px;font-size:0.82rem;color:#6b7280;">Verify all terms directly with the supplier before enrolling. ' +
+    '<a href="https://www.energychoice.ohio.gov/ApplesToApplesComparision.aspx?Category=NaturalGas&TerritoryId=' + tid + '&RateCode=' + currentRateCode + '" target="_blank" rel="noopener" style="color:#1565c0;">View all plans on PUCO \u2192</a></p>';
 
   loading.style.display = 'none';
   wrap.style.display = 'block';
