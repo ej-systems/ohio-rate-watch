@@ -778,9 +778,13 @@ async function renderTerritory(tid) {
     const mfee = s.monthlyFee || 0;
     const desc = s.offerDetails ? s.offerDetails.substring(0, 90) + (s.offerDetails.length > 90 ? '\u2026' : '') : '';
     let badges = '';
-    if (s.introPrice) badges += '<span style="background:#fef3c7;color:#92400e;border:1px solid #f59e0b;padding:1px 7px;border-radius:4px;font-size:0.72rem;font-weight:700;margin-right:5px;">' + '\u26a0 Intro rate' + '</span>';
+    if (s.introPrice) badges += '<span style="background:#fef3c7;color:#92400e;border:1px solid #f59e0b;padding:1px 7px;border-radius:4px;font-size:0.72rem;font-weight:700;margin-right:5px;">\u26a0 Intro rate</span>';
     if (s.renewablePct >= 100) badges += '<span style="background:#d1fae5;color:#065f46;border:1px solid #6ee7b7;padding:1px 7px;border-radius:4px;font-size:0.72rem;font-weight:700;margin-right:5px;">\ud83c\udf31 100% Renewable</span>';
-    if (s.offerDetails && /bundle|electric.*gas|gas.*electric/i.test(s.offerDetails)) badges += '<span style="background:#fce7f3;color:#9d174d;border:1px solid #f9a8d4;padding:1px 7px;border-radius:4px;font-size:0.72rem;font-weight:700;margin-right:5px;">\u26a0 Requires bundle</span>';
+    const _bundleText = (s.offerDetails || '') + ' ' + (s.promoDetails || '');
+    if (/bundle|electric.*gas|gas.*electric/i.test(_bundleText)) badges += '<span style="background:#fce7f3;color:#9d174d;border:1px solid #f9a8d4;padding:1px 7px;border-radius:4px;font-size:0.72rem;font-weight:700;margin-right:5px;">\u26a0 Requires bundle</span>';
+    if (etf > 0) badges += '<span style="background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;padding:1px 7px;border-radius:4px;font-size:0.72rem;font-weight:700;margin-right:5px;">$' + etf + ' ETF</span>';
+    if (mfee > 0) badges += '<span style="background:#fffbeb;color:#b45309;border:1px solid #fcd34d;padding:1px 7px;border-radius:4px;font-size:0.72rem;font-weight:700;margin-right:5px;">$' + mfee + '/mo fee</span>';
+    if (s.termMonths > 0) badges += '<span style="background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;padding:1px 7px;border-radius:4px;font-size:0.72rem;font-weight:700;margin-right:5px;">' + s.termMonths + ' mo</span>';
     return '<tr data-ratetype="' + s.rateType + '">' +
       '<td style="padding:14px 16px;vertical-align:top;">' +
         '<strong style="font-size:0.95rem;color:#111;">' + s.name + '</strong>' +
