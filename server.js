@@ -255,6 +255,14 @@ const server = http.createServer(async (req, res) => {
 
     try {
       // Query supplier_offers from PostgreSQL
+      // Find the most recent available scraped_date (prefer today, fall back to latest)
+      const { rows: dateRows } = await pool.query(`
+        SELECT scraped_date FROM supplier_offers
+        WHERE territory_id = $1 AND category = $2 AND rate_code = $3
+        ORDER BY scraped_date DESC LIMIT 1
+      `, [territory, category, rateCode]);
+      const bestDate = dateRows.length > 0 ? dateRows[0].scraped_date : today;
+
       const { rows: dbOffers } = await pool.query(`
         SELECT 
           supplier_name, company_name, price, rate_type, term_months,
@@ -267,7 +275,7 @@ const server = http.createServer(async (req, res) => {
           AND rate_code = $3
           AND scraped_date = $4
         ORDER BY price ASC
-      `, [territory, category, rateCode, today]);
+      `, [territory, category, rateCode, bestDate]);
 
       if (dbOffers.length > 0) {
         const isMCF = territory === 1;
@@ -299,7 +307,7 @@ const server = http.createServer(async (req, res) => {
           territoryId: territory,
           category,
           rateCode,
-          scrapedAt: today,
+          scrapedAt: bestDate,
           defaultRate: null,
           defaultRateText: null,
           suppliers,
