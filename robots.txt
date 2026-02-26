@@ -1,4 +1,7 @@
 User-agent: *
 Allow: /
+Disallow: /api/
+Disallow: /confirm
+Disallow: /unsubscribe
 
 Sitemap: https://ohioratewatch.com/sitemap.xml
