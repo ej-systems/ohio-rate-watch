@@ -1,107 +1,173 @@
-# Ohio Rate Watch — Scraper
+# Ohio Rate Watch
 
-Data pipeline for [ohioratewatch.com](https://ohioratewatch.com).  
-Monitors PUCO DIS and EIA API for Ohio utility rate changes.
+**[ohioratewatch.com](https://ohioratewatch.com)** — A free, open-source tool that helps Ohio natural gas customers compare supplier rates and avoid overpaying on their gas bill.
 
----
-
-## Data Sources
-
-### 1. PUCO DIS (Primary)
-- **URL:** https://dis.puc.state.oh.us
-- **What:** Every rate filing for every Ohio utility (electric + gas)
-- **Frequency:** Nightly
-- **Method:** Playwright (site blocks plain HTTP)
-- **File:** `puco-scraper.js`
-
-### 2. EIA API (Supporting)
-- **URL:** https://api.eia.gov/v2/electricity/retail-sales/data/
-- **What:** Monthly Ohio retail electricity rates by sector
-- **Frequency:** Monthly (data lags ~2 months)
-- **Method:** REST API (free, requires key)
-- **File:** `eia-scraper.js`
+> Ohio Rate Watch is not affiliated with the Public Utilities Commission of Ohio (PUCO), any natural gas utility, or any supplier. We do not receive commissions. Rates are sorted by price only. No featured listings. Ever.
 
 ---
 
-## Setup
+## What It Does
+
+Ohio's natural gas market is deregulated — customers can choose their supplier. But the official PUCO comparison tool is difficult to use, and most people don't realize they can save money by switching.
+
+Ohio Rate Watch:
+
+- Pulls certified supplier rates daily from [energychoice.ohio.gov](https://energychoice.ohio.gov)
+- Displays them sorted by price — no ranking manipulation
+- Shows early termination fees, monthly fees, term length, and bundle requirements upfront
+- Tracks historical rates for trend analysis
+- Sends free email alerts when rates drop meaningfully for a subscriber's utility
+
+---
+
+## Data Source
+
+All rate data comes from the **Ohio PUCO Energy Choice portal** (`energychoice.ohio.gov`) — the official state-run supplier comparison database. We do not create, modify, or editorialize rate data.
+
+Average monthly bill benchmarks are sourced from the [PUCO Ohio Utility Rate Survey](https://www.puco.ohio.gov/utilities/electricity/resources/ohio-utility-rate-survey), updated monthly.
+
+See [docs/methodology.md](docs/methodology.md) for full details on scraping, validation, and alert logic.
+
+---
+
+## Utilities Covered
+
+| Territory | Utility | Territory ID |
+|-----------|---------|-------------|
+| Columbia Gas of Ohio | Natural gas delivery, most of Ohio | 8 |
+| Enbridge Gas Ohio (Dominion) | Northeast Ohio / Cleveland area | 1 |
+| CenterPoint Energy (Vectren) | Southwest Ohio / Dayton area | 11 |
+| Duke Energy Ohio | Cincinnati area | 10 |
+
+---
+
+## Stack
+
+- **Backend:** Node.js / Express
+- **Database:** PostgreSQL
+- **Frontend:** Vanilla HTML/CSS/JS — no frameworks, no trackers
+- **Hosting:** [Railway](https://railway.app)
+- **Email:** [Resend](https://resend.com)
+- **DNS/CDN:** Cloudflare
+
+---
+
+## Running Locally
+
+### Prerequisites
+
+- Node.js 18+
+- PostgreSQL 14+
+
+### Setup
 
 ```bash
-# Install dependencies
+git clone https://github.com/paradosi/ohio-rate-watch.git
+cd ohio-rate-watch
 npm install
-
-# Install Playwright browsers
-npx playwright install chromium
-
-# Set your EIA API key (free at api.eia.gov)
-export EIA_API_KEY=your_key_here
+cp .env.example .env
+# Fill in your values in .env
 ```
 
----
+### Environment Variables
 
-## Running
+See [.env.example](.env.example) for all required variables.
+
+### Start the server
 
 ```bash
-# Scrape PUCO for yesterday's filings
-npm run puco
+node server.js
+```
 
-# Scrape PUCO for last 7 days (first run / catch-up)
-npm run test:puco
+### Run the scraper manually
 
-# Fetch EIA rate data + detect changes
-npm run eia
+```bash
+node scripts/daily-check.js --dry-run
+```
+
+### Run with forced alert (testing)
+
+```bash
+node scripts/daily-check.js --force-alert --dry-run
 ```
 
 ---
 
-## Output Format
+## Project Structure
 
-Each filing from PUCO scraper returns:
-
-```json
-{
-  "docketNumber": "24-0123-GA-TAR",
-  "company": "Columbia Gas of Ohio",
-  "description": "Application to Modify Gas Cost Recovery Rate",
-  "filingDate": "2024-11-15",
-  "effectiveDate": "2024-12-01",
-  "url": "https://dis.puc.state.oh.us/CaseRecord.aspx?...",
-  "keyword": "GCR",
-  "scrapedAt": "2024-11-15T23:00:00.000Z"
-}
+```
+ohio-rate-watch/
+├── server.js                  # Express API server
+├── index.html                 # Main rate comparison page
+├── learn.html                 # Educational content + county map
+├── methodology.html           # About & methodology page
+├── scraper/
+│   └── energy-choice-scraper.js   # PUCO scraper (PostBack/XML)
+├── scripts/
+│   └── daily-check.js         # Daily scrape + diff + alert fanout
+├── lib/
+│   └── history-store.js       # DB insert/query helpers
+├── docs/
+│   └── methodology.md         # Full data methodology
+├── .env.example               # Required environment variables
+└── zip-territory.json         # ZIP → utility mapping (1,253 Ohio ZIPs)
 ```
 
 ---
 
-## Target Utilities
+## Database Schema (Key Tables)
 
-| Utility | Type | Regulator |
-|---|---|---|
-| AEP Ohio | Electric | PUCO |
-| Ohio Edison / FirstEnergy | Electric | PUCO |
-| Cleveland Electric | Electric | PUCO |
-| Toledo Edison | Electric | PUCO |
-| Duke Energy Ohio | Electric + Gas | PUCO |
-| AES Ohio (Dayton) | Electric | PUCO |
-| Columbia Gas of Ohio | Gas | PUCO |
-| Dominion Energy Ohio | Gas | PUCO |
+```sql
+-- Daily supplier offers
+supplier_offers (scraped_date, territory_id, category, rate_code,
+                 supplier_name, price, rate_type, term_months, etf,
+                 monthly_fee, is_intro, is_promo, is_bundle_required,
+                 is_renewable, renewable_type, offer_details, sign_up_url)
+
+-- PUCO city bill benchmarks
+city_bills (report_month, city, utility_key, gas_bill_total, gas_pct_change, ...)
+
+-- 10-year monthly bill history
+city_bill_history (report_date, city, total_charge, ...)
+
+-- Scrape run tracking + validation
+scrape_runs (started_at, finished_at, status, row_count, error_message)
+
+-- Rate change events
+rate_events (detected_at, supplier_name, event_type, old_rate, new_rate, change_pct)
+
+-- Subscribers (email alerts)
+subscribers (email, zip, territory, current_rate, min_savings_pct,
+             confirmed, unsubscribe_token, last_alerted_at)
+```
 
 ---
 
-## Rate Change Types
+## Alert System
 
-| Type | Frequency | Filed With |
-|---|---|---|
-| Base rate changes | Annual (rate case) | PUCO |
-| Gas Cost Recovery (GCR) | Monthly | PUCO |
-| Fuel Adjustment Rider | Quarterly | PUCO |
-| Energy Cost Recovery | Quarterly | PUCO |
-| Delivery/distribution riders | Annual | PUCO |
+Subscribers sign up with email + ZIP (+ optional current rate from their bill). The system:
+
+1. Looks up their utility from ZIP code
+2. Sends a confirmation email — no alerts until confirmed
+3. After each daily scrape, checks if the best available fixed rate is below their baseline (personal rate or SCO default) by their threshold (default 15%)
+4. Sends a personalized alert if threshold is met and no alert was sent in the last 7 days
 
 ---
 
-## Important Notes
+## License
 
-- **Polite scraping:** PUCO scraper runs once per night max, blocks images, adds 1-2s delays
-- **No API key needed for PUCO:** Public government data, scraping is legally defensible
-- **EIA API key:** Free at https://api.eia.gov — sign up takes 2 minutes
-- **Don't run from residential IPs repeatedly** — use a static cloud IP (Railway/Render assigns one)
+[GNU Affero General Public License v3.0 (AGPL-3.0)](LICENSE)
+
+If you deploy a modified version of this publicly, you must publish your source code under the same license. This is intentional — it keeps forks of this civic project open and accountable.
+
+---
+
+## Non-Affiliation
+
+Ohio Rate Watch is not affiliated with the Public Utilities Commission of Ohio (PUCO), Columbia Gas, Enbridge Gas Ohio, CenterPoint Energy, Duke Energy Ohio, or any natural gas supplier. This is an independent consumer tool.
+
+---
+
+## Contributing
+
+Issues and pull requests are welcome. Please open an issue before submitting large changes.
