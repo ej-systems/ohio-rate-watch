@@ -268,6 +268,7 @@
 <div id="city-bills-banner" style="display:none;background:linear-gradient(135deg,#eff6ff,#e0f2fe);border:1px solid #93c5fd;border-radius:10px;padding:12px 18px;margin-bottom:16px;font-size:0.85rem;color:#1e3a8a;line-height:1.6;"></div>
 <div id="territory-sco-bar" style="background:#fff3cd;border:1px solid #ffc107;border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:0.88rem;"></div>
 <div id="rates-loading" style="text-align:center;padding:40px;color:#6b7280;">Loading rates…</div>
+<div id="rates-last-updated" style="font-size:0.8rem;color:#9ca3af;margin-bottom:6px;display:none;"></div>
 <div id="rates-table-wrap" style="display:none;"></div>
 
 
@@ -892,8 +893,22 @@ async function renderTerritory(tid) {
     '<p style="margin-top:10px;font-size:0.82rem;color:#6b7280;">Verify all terms directly with the supplier before enrolling. ' +
     '<a href="https://www.energychoice.ohio.gov/ApplesToApplesComparision.aspx?Category=NaturalGas&TerritoryId=' + tid + '&RateCode=' + currentRateCode + '" target="_blank" rel="noopener" style="color:#1565c0;">View all plans on PUCO \u2192</a></p>';
 
+  // Show "Last updated" timestamp + source attribution
+  if (data.scrapedAt) {
+    const ts = new Date(data.scrapedAt);
+    const fmt = ts.toLocaleString('en-US', {
+      timeZone: 'America/New_York',
+      month: 'short', day: 'numeric', year: 'numeric',
+      hour: 'numeric', minute: '2-digit', hour12: true,
+    });
+    const tsEl = document.getElementById('rates-last-updated');
+    if (tsEl) tsEl.innerHTML = 'Last updated: ' + fmt + ' ET &nbsp;·&nbsp; <a href="https://energychoice.ohio.gov" target="_blank" rel="noopener" style="color:#6b7280;">Source: energychoice.ohio.gov</a>';
+  }
+
   loading.style.display = 'none';
   wrap.style.display = 'block';
+  const tsEl2 = document.getElementById('rates-last-updated');
+  if (tsEl2) tsEl2.style.display = 'block';
 
   // Fetch and render city bills banner
   const TERRITORY_TO_KEY = { 8: 'columbia', 1: 'enbridge', 11: 'centerpoint', 10: 'duke' };

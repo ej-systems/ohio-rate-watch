@@ -82,6 +82,40 @@ pool.query(`
   );
 `).then(() => console.log('[db] city_bill_history table ok')).catch(e => console.error('[db] city_bill_history migration error:', e.message));
 
+pool.query(`
+  CREATE TABLE IF NOT EXISTS scrape_runs (
+    id SERIAL PRIMARY KEY,
+    started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    finished_at TIMESTAMPTZ,
+    status TEXT NOT NULL DEFAULT 'running',
+    row_count INTEGER,
+    territory_id INTEGER,
+    category TEXT,
+    rate_code TEXT,
+    error_message TEXT,
+    payload_hash TEXT
+  );
+`).then(() => console.log('[db] scrape_runs table ok')).catch(e => console.error('[db] scrape_runs migration error:', e.message));
+
+pool.query(`
+  CREATE TABLE IF NOT EXISTS rate_events (
+    id SERIAL PRIMARY KEY,
+    detected_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    scrape_run_id INTEGER REFERENCES scrape_runs(id),
+    territory_id INTEGER,
+    category TEXT,
+    rate_code TEXT,
+    supplier_name TEXT,
+    event_type TEXT NOT NULL,
+    old_rate REAL,
+    new_rate REAL,
+    change_abs REAL,
+    change_pct REAL,
+    term_months INTEGER,
+    rate_type TEXT
+  );
+`).then(() => console.log('[db] rate_events table ok')).catch(e => console.error('[db] rate_events migration error:', e.message));
+
 function allHeaders(headers = {}) {
   return {
     'Access-Control-Allow-Origin': '*',
@@ -803,6 +837,35 @@ const server = http.createServer(async (req, res) => {
   // Try .html extension for extensionless paths
   if (!path.extname(filePath) && existsSync(filePath + '.html')) {
     filePath = filePath + '.html';
+  }
+
+  // GET /api/scrape-status
+  if (req.method === 'GET' && url.pathname === '/api/scrape-status') {
+    try {
+      const { rows } = await pool.query(`
+        SELECT
+          MAX(CASE WHEN status = 'success' THEN started_at END) AS last_success,
+          MAX(started_at) AS last_run,
+          (SELECT status FROM scrape_runs ORDER BY id DESC LIMIT 1) AS status,
+          (SELECT row_count FROM scrape_runs WHERE status = 'success' ORDER BY id DESC LIMIT 1) AS row_count
+        FROM scrape_runs
+      `);
+      const r = rows[0] || {};
+      const lastSuccess = r.last_success ? new Date(r.last_success) : null;
+      const hoursSince = lastSuccess ? ((Date.now() - lastSuccess.getTime()) / 3600000).toFixed(1) : null;
+      res.writeHead(200, allHeaders());
+      res.end(JSON.stringify({
+        lastSuccess: lastSuccess ? lastSuccess.toISOString() : null,
+        lastRun: r.last_run ? new Date(r.last_run).toISOString() : null,
+        status: r.status || 'unknown',
+        rowCount: r.row_count || null,
+        hoursSinceUpdate: hoursSince ? parseFloat(hoursSince) : null,
+      }));
+    } catch (err) {
+      res.writeHead(500, allHeaders());
+      res.end(JSON.stringify({ error: err.message }));
+    }
+    return;
   }
 
   try {

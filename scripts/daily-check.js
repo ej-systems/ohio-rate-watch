@@ -18,6 +18,7 @@ process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import pg from 'pg';
 import { insertSnapshot, insertSupplierOffers } from '../lib/history-store.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -362,6 +363,104 @@ function buildAlertEmail(changes, subscriber) {
 // ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// DB helpers for scrape_runs and rate_events
+// ---------------------------------------------------------------------------
+let _pool = null;
+function getPool() {
+  if (!_pool) {
+    let DATABASE_URL = process.env.DATABASE_URL;
+    if (!DATABASE_URL) {
+      const { readFileSync, existsSync } = fs;
+      const envPath = path.join(ROOT, '.env');
+      if (existsSync(envPath)) {
+        const envFile = readFileSync(envPath, 'utf8');
+        DATABASE_URL = envFile.match(/DATABASE_URL=(.*)/)?.[1]?.trim();
+      }
+    }
+    if (!DATABASE_URL) throw new Error('DATABASE_URL not set');
+    _pool = new pg.Pool({ connectionString: DATABASE_URL });
+  }
+  return _pool;
+}
+
+async function startScrapeRun() {
+  try {
+    const { rows } = await getPool().query(
+      `INSERT INTO scrape_runs (status) VALUES ('running') RETURNING id`,
+    );
+    return rows[0].id;
+  } catch (err) {
+    log('WARNING: Could not record scrape_run start:', err.message);
+    return null;
+  }
+}
+
+async function finishScrapeRun(runId, status, rowCount, errorMessage = null) {
+  if (!runId) return;
+  try {
+    await getPool().query(
+      `UPDATE scrape_runs SET finished_at=NOW(), status=$1, row_count=$2, error_message=$3 WHERE id=$4`,
+      [status, rowCount, errorMessage, runId],
+    );
+  } catch (err) {
+    log('WARNING: Could not update scrape_run:', err.message);
+  }
+}
+
+async function getSevenDayMedian() {
+  try {
+    const { rows } = await getPool().query(`
+      SELECT PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY row_count) AS median
+      FROM scrape_runs
+      WHERE status = 'success' AND started_at > NOW() - INTERVAL '7 days'
+    `);
+    return rows[0]?.median || null;
+  } catch {
+    return null;
+  }
+}
+
+async function recordRateEvents(runId, changes) {
+  if (!runId || !changes.length) return;
+  try {
+    for (const c of changes) {
+      const eventType = c.type === 'new_offer' ? 'new_offer'
+        : c.type === 'removed_offer' ? 'removed_offer'
+        : 'rate_change';
+      const changeAbs = (c.currRate != null && c.prevRate != null)
+        ? parseFloat((c.currRate - c.prevRate).toFixed(6)) : null;
+      const changePct = c.changePct != null ? parseFloat(c.changePct) : null;
+      await getPool().query(`
+        INSERT INTO rate_events
+          (scrape_run_id, supplier_name, event_type, old_rate, new_rate, change_abs, change_pct)
+        VALUES ($1,$2,$3,$4,$5,$6,$7)
+      `, [runId, c.supplier || c.territory || null, eventType,
+          c.prevRate || null, c.currRate || null, changeAbs, changePct]);
+    }
+    log(`Recorded ${changes.length} rate_events for run ${runId}`);
+  } catch (err) {
+    log('WARNING: Could not record rate_events:', err.message);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Discord webhook helper
+// ---------------------------------------------------------------------------
+async function sendDiscordAlert(message) {
+  const webhookUrl = process.env.DISCORD_WEBHOOK_URL;
+  if (!webhookUrl) return;
+  try {
+    await fetch(webhookUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content: message }),
+    });
+  } catch (err) {
+    log('WARNING: Discord webhook failed:', err.message);
+  }
+}
+
 async function main() {
   log('Ohio Rate Watch daily check starting...');
 
@@ -373,10 +472,36 @@ async function main() {
   // Ensure data directory exists
   fs.mkdirSync(path.join(ROOT, 'data'), { recursive: true });
 
+  // Start tracking this scrape run
+  const runId = await startScrapeRun();
+
   // Run the scraper
   log('Running energy choice scraper...');
   const { scrapeAllRates, detectChanges } = await import('../scraper/energy-choice-scraper.js');
-  const current = await scrapeAllRates();
+  let current;
+  try {
+    current = await scrapeAllRates();
+  } catch (err) {
+    log('ERROR: Scraper threw:', err.message);
+    await finishScrapeRun(runId, 'failed', 0, err.message);
+    await sendDiscordAlert(`⚠️ **Ohio Rate Watch scraper FAILED**\nError: ${err.message}`);
+    process.exit(1);
+  }
+
+  // Count total offers across all territories
+  const totalOffers = current.reduce((sum, page) => sum + (page.suppliers?.length || 0), 0);
+  log(`Scraper returned ${current.length} rate pages, ~${totalOffers} offers`);
+
+  // Validation gate: compare against 7-day median
+  const median = await getSevenDayMedian();
+  const minAcceptable = median ? Math.floor(median * 0.3) : 30;
+  if (totalOffers < minAcceptable) {
+    const msg = `Row count ${totalOffers} is below 30% of 7-day median (${median?.toFixed(0) || 'unknown'}). Skipping DB write.`;
+    log('VALIDATION FAILED:', msg);
+    await finishScrapeRun(runId, 'invalid', totalOffers, msg);
+    await sendDiscordAlert(`⚠️ **Ohio Rate Watch scrape validation failed**\n${msg}`);
+    process.exit(1);
+  }
 
   // Save latest snapshot
   fs.writeFileSync(LATEST_FILE, JSON.stringify(current, null, 2));
@@ -391,13 +516,16 @@ async function main() {
   }
 
   // Store to supplier_offers table (one row per offer per day)
+  let offerCount = 0;
   try {
     const today = new Date().toISOString().slice(0, 10);
-    const offerCount = await insertSupplierOffers(today, current);
+    offerCount = await insertSupplierOffers(today, current);
     log(`Stored ${offerCount} offers in supplier_offers table for ${today}`);
   } catch (err) {
     log("WARNING: Failed to store supplier offers:", err.message);
   }
+
+  await finishScrapeRun(runId, 'success', offerCount);
 
   // Load baseline for comparison
   let changes = [];
@@ -422,6 +550,7 @@ async function main() {
     if (totalChanges > 20) log(`Showing top 20 of ${totalChanges} significant changes`);
 
     log(`Detected ${allChanges.length} total changes, ${totalChanges} significant (>${5}%), showing top ${changes.length}`);
+    await recordRateEvents(runId, changes);
   } else {
     log('No baseline found — saving current as baseline (no alerts this run)');
     fs.writeFileSync(BASELINE_FILE, JSON.stringify(current, null, 2));
