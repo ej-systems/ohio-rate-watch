@@ -229,10 +229,11 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'GET' && url.pathname === '/api/rates') {
     const territory = parseInt(url.searchParams.get('territory') || '8');
     const category = url.searchParams.get('category') || 'NaturalGas';
+    const rateCode = parseInt(url.searchParams.get('rateCode') || '1');
     
     try {
       const data = JSON.parse(fs.readFileSync(path.join(__dirname, 'data/rates-latest.json'), 'utf8'));
-      const entry = data.find(x => x.territoryId === territory && x.category === category);
+      const entry = data.find(x => x.territoryId === territory && x.category === category && x.rateCode === rateCode);
       
       if (!entry) {
         res.writeHead(404, { 'Content-Type': 'application/json' });
@@ -252,6 +253,7 @@ const server = http.createServer(async (req, res) => {
       const result = {
         territoryId: territory,
         category,
+        rateCode,
         scrapedAt: entry.scrapedAt,
         defaultRate: entry.defaultRate,
         defaultRateText: entry.defaultRateText,

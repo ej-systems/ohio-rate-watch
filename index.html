@@ -197,6 +197,13 @@
 }
 .tab-btn:hover { background: #e5e7eb; }
 .tab-btn.active { background: #1565c0; color: #fff; border-color: #1565c0; }
+.rc-pill {
+  background: #f3f4f6; border: 1px solid #d1d5db; border-radius: 20px;
+  padding: 5px 14px; font-size: 0.82rem; font-weight: 600; cursor: pointer;
+  transition: all 0.15s;
+}
+.rc-pill:hover { background: #e5e7eb; }
+.rc-pill.active { background: #1e40af; color: #fff; border-color: #1e40af; }
 </style>
 </head>
 <body>
@@ -236,7 +243,14 @@
   <h2>Current Ohio Natural Gas Rates</h2>
   <p class="subtitle">Live data from PUCO Energy Choice Ohio — updated daily. These are certified rates from licensed suppliers.</p>
 
-  <!-- TERRITORY TABS -->
+  <!-- RATE CLASS TOGGLE -->
+<div id="rate-class-toggle" style="display:flex;align-items:center;gap:6px;margin-bottom:16px;font-size:0.88rem;">
+  <button class="rc-pill active" data-rc="1" onclick="switchRateCode(1)">Residential</button>
+  <button class="rc-pill" data-rc="2" onclick="switchRateCode(2)">Small Commercial</button>
+  <span style="color:#9ca3af;font-size:0.78rem;margin-left:8px;">Large commercial/industrial rates are negotiated directly.</span>
+</div>
+
+<!-- TERRITORY TABS -->
 <div id="territory-tabs" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px;">
   <button class="tab-btn active" data-territory="8" onclick="switchTerritory(8)">
     Columbia Gas <span style="font-size:0.75em;opacity:0.8;">(most of Ohio)</span>
@@ -701,7 +715,16 @@ const TERRITORY_INFO = {
 };
 
 let currentTerritory = 8;
+let currentRateCode = 1;
 const ratesCache = {};
+
+function switchRateCode(rc) {
+  currentRateCode = rc;
+  document.querySelectorAll('.rc-pill').forEach(b => {
+    b.classList.toggle('active', parseInt(b.dataset.rc) === rc);
+  });
+  renderTerritory(currentTerritory);
+}
 
 function switchTerritory(tid) {
   currentTerritory = tid;
@@ -720,17 +743,18 @@ async function renderTerritory(tid) {
   loading.style.display = 'block';
   wrap.style.display = 'none';
 
-  if (!ratesCache[tid]) {
+  const cacheKey = tid + '-' + currentRateCode;
+  if (!ratesCache[cacheKey]) {
     try {
-      const r = await fetch('/api/rates?territory=' + tid + '&category=NaturalGas');
-      ratesCache[tid] = await r.json();
+      const r = await fetch('/api/rates?territory=' + tid + '&category=NaturalGas&rateCode=' + currentRateCode);
+      ratesCache[cacheKey] = await r.json();
     } catch(e) {
       loading.textContent = 'Failed to load rates. Please try again.';
       return;
     }
   }
 
-  const data = ratesCache[tid];
+  const data = ratesCache[cacheKey];
   const suppliers = (data.suppliers || [])
     .filter(s => s.price && s.price > 0)
     .sort((a, b) => a.price - b.price);
@@ -783,7 +807,7 @@ async function renderTerritory(tid) {
     '</tr></thead>' +
     '<tbody>' + rows + '</tbody>' +
     '</table></div>' +
-    '<p style="margin-top:12px;font-size:0.82rem;"><a href="https://www.energychoice.ohio.gov/ApplesToApplesComparision.aspx?Category=NaturalGas&TerritoryId=' + tid + '&RateCode=1" target="_blank" rel="noopener" style="color:#1565c0;">View all plans on PUCO Energy Choice Ohio \u2192</a></p>';
+    '<p style="margin-top:12px;font-size:0.82rem;"><a href="https://www.energychoice.ohio.gov/ApplesToApplesComparision.aspx?Category=NaturalGas&TerritoryId=' + tid + '&RateCode=' + currentRateCode + '" target="_blank" rel="noopener" style="color:#1565c0;">View all plans on PUCO Energy Choice Ohio \u2192</a></p>';
 
   loading.style.display = 'none';
   wrap.style.display = 'block';
