@@ -808,16 +808,37 @@ async function renderTerritory(tid) {
     return '<tr class="section-label-row"><td colspan="5" style="padding:8px 16px 4px;font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;color:' + color + ';background:' + bg + ';border-top:2px solid ' + borderColor + ';">' + label + '</td></tr>';
   }
 
+  const INITIAL_SHOW = 5; // plans per section shown initially
   const fixedPlans = suppliers.filter(s => s.rateType === 'fixed');
   const varPlans   = suppliers.filter(s => s.rateType !== 'fixed');
   let rows = '';
   if (fixedPlans.length) {
     rows += sectionDivider('\ud83d\udd12 Fixed Rate Plans (' + fixedPlans.length + ')', '#1d4ed8', '#f8fbff', '#bfdbfe');
-    fixedPlans.slice(0, 20).forEach(s => { rows += buildRow(s); });
+    fixedPlans.slice(0, INITIAL_SHOW).forEach(s => { rows += buildRow(s); });
+    if (fixedPlans.length > INITIAL_SHOW) {
+      rows += '<tr id="fixed-hidden-rows" style="display:none;">' +
+        '<td colspan="5" style="padding:0;">' +
+        '<table style="width:100%;border-collapse:collapse;">' +
+        fixedPlans.slice(INITIAL_SHOW).map(s => buildRow(s)).join('') +
+        '</table></td></tr>';
+      rows += '<tr id="fixed-load-more-row"><td colspan="5" style="padding:10px 16px;text-align:center;">' +
+        '<button onclick="expandSection(\'fixed\')" style="border:1px solid #bfdbfe;border-radius:20px;padding:6px 20px;font-size:0.85rem;cursor:pointer;background:#eff6ff;color:#1d4ed8;font-weight:600;">' +
+        'Show ' + (fixedPlans.length - INITIAL_SHOW) + ' more fixed plans \u25bc</button></td></tr>';
+    }
   }
   if (varPlans.length) {
     rows += sectionDivider('\ud83d\udcc8 Variable Rate Plans (' + varPlans.length + ')', '#c2410c', '#fffbf7', '#fed7aa');
-    varPlans.slice(0, 10).forEach(s => { rows += buildRow(s); });
+    varPlans.slice(0, INITIAL_SHOW).forEach(s => { rows += buildRow(s); });
+    if (varPlans.length > INITIAL_SHOW) {
+      rows += '<tr id="var-hidden-rows" style="display:none;">' +
+        '<td colspan="5" style="padding:0;">' +
+        '<table style="width:100%;border-collapse:collapse;">' +
+        varPlans.slice(INITIAL_SHOW).map(s => buildRow(s)).join('') +
+        '</table></td></tr>';
+      rows += '<tr id="var-load-more-row"><td colspan="5" style="padding:10px 16px;text-align:center;">' +
+        '<button onclick="expandSection(\'var\')" style="border:1px solid #fed7aa;border-radius:20px;padding:6px 20px;font-size:0.85rem;cursor:pointer;background:#fff7ed;color:#c2410c;font-weight:600;">' +
+        'Show ' + (varPlans.length - INITIAL_SHOW) + ' more variable plans \u25bc</button></td></tr>';
+    }
   }
 
   // Explanation cards text varies slightly for Duke (GCR vs SCO)
@@ -867,6 +888,13 @@ async function renderTerritory(tid) {
   loading.style.display = 'none';
   wrap.style.display = 'block';
 }
+
+window.expandSection = function(section) {
+  const hiddenRows = document.getElementById(section + '-hidden-rows');
+  const moreRow = document.getElementById(section + '-load-more-row');
+  if (hiddenRows) hiddenRows.style.display = '';
+  if (moreRow) moreRow.style.display = 'none';
+};
 
 // Load default territory on page load
 
