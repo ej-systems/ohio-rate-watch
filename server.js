@@ -237,7 +237,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'GET' && url.pathname === '/api/rates') {
     const territory = parseInt(url.searchParams.get('territory') || '8');
     const category = url.searchParams.get('category') || 'NaturalGas';
-    const rateCode = parseInt(url.searchParams.get('rateCode') || '1');
+    const rateCode = url.searchParams.get('rateCode') || '1';
     const today = new Date().toISOString().slice(0, 10);
 
     try {
@@ -251,7 +251,7 @@ const server = http.createServer(async (req, res) => {
         WHERE territory_id = $1 
           AND category = $2 
           AND rate_code = $3
-          AND DATE(scraped_at) = $4
+          AND scraped_date = $4
         ORDER BY price ASC
       `, [territory, category, rateCode, today]);
 
