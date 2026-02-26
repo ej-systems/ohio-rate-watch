@@ -120,6 +120,7 @@
     .chart-inner { padding: 0; }
   }
 </style>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
 </head>
 <body>
 
@@ -170,6 +171,18 @@
     Columbia Gas of Ohio · Enbridge Gas Ohio · CenterPoint Energy Ohio<br><br>
     Duke Energy Ohio currently uses a different method called Gas Cost Recovery (GCR), but is moving to the SCO system in April 2026.
   </div>
+
+  <div id="ohio-utility-map-wrap" style="margin:24px 0;">
+    <p style="font-size:0.85rem;color:#6b7280;margin-bottom:8px;">Hover over your county to see your utility.</p>
+    <div id="ohio-map" style="height:380px;border-radius:12px;overflow:hidden;border:1px solid #e5e7eb;background:#f9fafb;"></div>
+    <div style="margin-top:10px;display:flex;flex-wrap:wrap;gap:12px;font-size:0.8rem;">
+      <span style="display:flex;align-items:center;gap:5px;"><span style="width:14px;height:14px;border-radius:3px;background:#1565c0;display:inline-block;"></span>Columbia Gas of Ohio</span>
+      <span style="display:flex;align-items:center;gap:5px;"><span style="width:14px;height:14px;border-radius:3px;background:#7b1fa2;display:inline-block;"></span>Enbridge Gas Ohio</span>
+      <span style="display:flex;align-items:center;gap:5px;"><span style="width:14px;height:14px;border-radius:3px;background:#f57c00;display:inline-block;"></span>CenterPoint Energy Ohio</span>
+      <span style="display:flex;align-items:center;gap:5px;"><span style="width:14px;height:14px;border-radius:3px;background:#16a34a;display:inline-block;"></span>Duke Energy Ohio</span>
+    </div>
+  </div>
+
 </div>
 
 <hr class="section-divider">
@@ -792,5 +805,89 @@
     subscribe(document.getElementById('footer-email').value, document.getElementById('footer-zip').value, document.getElementById('footer-btn'), document.getElementById('footer-msg'));
   });
 </script>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV/XN/WLEo=" crossorigin=""></script>
+<script>
+(function() {
+  const COUNTY_UTILITY = {
+    'Ashtabula':'enbridge','Lake':'enbridge','Cuyahoga':'enbridge','Geauga':'enbridge',
+    'Trumbull':'enbridge','Mahoning':'enbridge','Portage':'enbridge','Summit':'enbridge',
+    'Medina':'enbridge','Wayne':'enbridge','Stark':'enbridge','Carroll':'enbridge',
+    'Columbiana':'enbridge','Jefferson':'enbridge','Harrison':'enbridge',
+    'Montgomery':'centerpoint','Greene':'centerpoint','Clark':'centerpoint',
+    'Miami':'centerpoint','Champaign':'centerpoint','Darke':'centerpoint','Preble':'centerpoint',
+    'Hamilton':'duke','Clermont':'duke','Warren':'duke','Butler':'duke',
+    'Brown':'duke','Clinton':'duke','Highland':'duke'
+  };
+  const UTILITY_INFO = {
+    columbia:    { name:'Columbia Gas of Ohio',    color:'#1565c0', sco:'$1.071/ccf', customers:'~1.4M customers' },
+    enbridge:    { name:'Enbridge Gas Ohio',       color:'#7b1fa2', sco:'$0.796/ccf equiv.', customers:'~1.2M customers' },
+    centerpoint: { name:'CenterPoint Energy Ohio', color:'#f57c00', sco:'$1.02/ccf',  customers:'~320K customers' },
+    duke:        { name:'Duke Energy Ohio',        color:'#16a34a', sco:'GCR rate (SCO April 2026)', customers:'~130K customers' }
+  };
+
+  function getUtility(name) {
+    return COUNTY_UTILITY[name] || 'columbia';
+  }
+
+  var map = L.map('ohio-map', {
+    zoomControl: false, attributionControl: false, dragging: false,
+    scrollWheelZoom: false, doubleClickZoom: false, touchZoom: false,
+    boxZoom: false, keyboard: false
+  });
+
+  var geojsonLayer;
+
+  function defaultStyle(feature) {
+    var u = getUtility(feature.properties.NAME);
+    return {
+      fillColor: UTILITY_INFO[u].color,
+      fillOpacity: 0.7,
+      weight: 0.8,
+      color: '#fff'
+    };
+  }
+
+  function highlightStyle(feature) {
+    var u = getUtility(feature.properties.NAME);
+    return {
+      fillColor: UTILITY_INFO[u].color,
+      fillOpacity: 0.95,
+      weight: 2,
+      color: '#333'
+    };
+  }
+
+  fetch('/ohio-counties.geojson')
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      geojsonLayer = L.geoJSON(data, {
+        style: defaultStyle,
+        onEachFeature: function(feature, layer) {
+          var name = feature.properties.NAME;
+          var uKey = getUtility(name);
+          var info = UTILITY_INFO[uKey];
+          layer.bindTooltip('<strong>' + name + ' County</strong><br>' + info.name + '<br><span style="font-size:0.8em;color:#666;">' + info.customers + '</span>', {
+            sticky: true, className: 'county-tooltip'
+          });
+          layer.on('mouseover', function(e) {
+            e.target.setStyle(highlightStyle(feature));
+            e.target.bringToFront();
+          });
+          layer.on('mouseout', function(e) {
+            geojsonLayer.resetStyle(e.target);
+          });
+          layer.on('click', function() {
+            var territory = uKey === 'columbia' ? 'columbia' : uKey === 'enbridge' ? 'enbridge' : uKey === 'centerpoint' ? 'centerpoint' : 'duke';
+            layer.bindPopup('<strong>' + info.name + '</strong><br>Current rate: ' + info.sco + '<br>' + info.customers + '<br><a href="/?territory=' + territory + '" style="color:#1565c0;font-weight:600;">Compare rates →</a>').openPopup();
+          });
+        }
+      }).addTo(map);
+      map.fitBounds(geojsonLayer.getBounds(), { padding: [10, 10] });
+    });
+})();
+</script>
+<style>.county-tooltip{font-size:0.85rem;line-height:1.4;padding:6px 10px;border-radius:6px;}</style>
+
 </body>
 </html>
