@@ -181,6 +181,19 @@
       <span style="display:flex;align-items:center;gap:5px;"><span style="width:14px;height:14px;border-radius:3px;background:#f57c00;display:inline-block;"></span>CenterPoint Energy Ohio</span>
       <span style="display:flex;align-items:center;gap:5px;"><span style="width:14px;height:14px;border-radius:3px;background:#16a34a;display:inline-block;"></span>Duke Energy Ohio</span>
     </div>
+
+  <div id="zip-lookup" style="margin-top:16px;padding:14px 16px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;">
+    <p style="font-size:0.85rem;font-weight:600;color:#374151;margin:0 0 8px 0;">Find your utility by ZIP code</p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <input id="zip-input" type="text" maxlength="5" placeholder="Enter ZIP code" inputmode="numeric"
+        style="border:1px solid #d1d5db;border-radius:6px;padding:6px 10px;font-size:0.9rem;width:130px;outline:none;" />
+      <button id="zip-btn" onclick="lookupZip()"
+        style="background:#1565c0;color:#fff;border:none;border-radius:6px;padding:6px 14px;font-size:0.9rem;cursor:pointer;font-weight:600;">
+        Look up
+      </button>
+    </div>
+    <div id="zip-result" style="margin-top:10px;font-size:0.85rem;display:none;"></div>
+  </div>
   </div>
 
 </div>
@@ -886,6 +899,76 @@ window.addEventListener('load', function() {
       map.fitBounds(geojsonLayer.getBounds(), { padding: [10, 10] });
       setTimeout(function(){ map.invalidateSize(); }, 150);
     });
+
+  // ZIP code lookup
+  window.lookupZip = function() {
+    var zip = document.getElementById('zip-input').value.trim();
+    var resultDiv = document.getElementById('zip-result');
+    if (!zip.match(/^\d{5}$/)) {
+      resultDiv.style.display = 'block';
+      resultDiv.innerHTML = '<span style="color:#dc2626;">Please enter a valid 5-digit ZIP code.</span>';
+      return;
+    }
+    resultDiv.style.display = 'block';
+    resultDiv.innerHTML = '<span style="color:#6b7280;">Looking up…</span>';
+
+    fetch('https://nominatim.openstreetmap.org/search?postalcode=' + zip + '&country=US&format=json&addressdetails=1&limit=3',
+      { headers: { 'Accept': 'application/json' } })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        var ohioResult = null;
+        for (var i = 0; i < data.length; i++) {
+          if (data[i].address && data[i].address.state === 'Ohio') {
+            ohioResult = data[i];
+            break;
+          }
+        }
+        if (!ohioResult) {
+          resultDiv.innerHTML = '<span style="color:#dc2626;">That ZIP code doesn\u2019t appear to be in Ohio. Ohio Rate Watch covers Ohio utilities only.</span>';
+          return;
+        }
+        var addr = ohioResult.address;
+        var rawCounty = addr.county || addr.city_district || '';
+        var county = rawCounty.replace(' County', '').trim();
+        var uKey = getUtility(county);
+        var info = UTILITY_INFO[uKey];
+
+        // Highlight the county on the map
+        if (geojsonLayer) {
+          geojsonLayer.eachLayer(function(layer) {
+            if (layer.feature.properties.NAME === county) {
+              geojsonLayer.resetStyle(layer);
+              layer.setStyle({ fillColor: info.color, fillOpacity: 1.0, weight: 3, color: '#333' });
+              layer.bringToFront();
+              map.fitBounds(layer.getBounds(), { padding: [40, 40], maxZoom: 8 });
+            } else {
+              layer.setStyle({ fillColor: UTILITY_INFO[getUtility(layer.feature.properties.NAME)].color, fillOpacity: 0.35, weight: 0.5, color: '#fff' });
+            }
+          });
+        }
+
+        var rateHtml = uKey === 'duke'
+          ? '<span style="color:#6b7280;">GCR rate (moving to SCO April 2026)</span>'
+          : 'Current SCO: <strong>' + info.sco + '</strong>';
+
+        resultDiv.innerHTML =
+          '<div style="display:flex;align-items:flex-start;gap:10px;">' +
+          '<span style="width:14px;height:14px;border-radius:3px;background:' + info.color + ';display:inline-block;flex-shrink:0;margin-top:2px;"></span>' +
+          '<div><strong>' + county + ' County</strong> is served by <strong>' + info.name + '</strong>.<br>' +
+          rateHtml + '<br>' +
+          '<span style="color:#6b7280;font-size:0.8rem;">Some areas may have overlapping service — verify on your gas bill.</span></div></div>' +
+          '<div style="margin-top:8px;"><a href="/?utility=' + uKey + '" style="color:#1565c0;font-weight:600;font-size:0.85rem;">Compare suppliers for ' + info.name + ' →</a></div>';
+      })
+      .catch(function() {
+        resultDiv.innerHTML = '<span style="color:#dc2626;">Lookup failed. Try again or check your utility bill directly.</span>';
+      });
+  };
+
+  // Allow Enter key on zip input
+  document.getElementById('zip-input').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') window.lookupZip();
+  });
+
 });
 </script>
 <style>.county-tooltip{font-size:0.85rem;line-height:1.4;padding:6px 10px;border-radius:6px;}</style>
