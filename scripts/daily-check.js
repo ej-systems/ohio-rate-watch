@@ -173,9 +173,9 @@ async function main() {
   fs.writeFileSync(LATEST_FILE, JSON.stringify(current, null, 2));
   log(`Saved ${current.length} rate pages to rates-latest.json`);
 
-  // Store to historical SQLite database
+  // Store to historical PostgreSQL database
   try {
-    const rowCount = insertSnapshot(current);
+    const rowCount = await insertSnapshot(current);
     log(`Stored ${rowCount} supplier rows in history database`);
   } catch (err) {
     log("WARNING: Failed to store history:", err.message);
@@ -184,7 +184,7 @@ async function main() {
   // Store to supplier_offers table (one row per offer per day)
   try {
     const today = new Date().toISOString().slice(0, 10);
-    const offerCount = insertSupplierOffers(today, current);
+    const offerCount = await insertSupplierOffers(today, current);
     log(`Stored ${offerCount} offers in supplier_offers table for ${today}`);
   } catch (err) {
     log("WARNING: Failed to store supplier offers:", err.message);

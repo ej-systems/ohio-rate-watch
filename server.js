@@ -9,16 +9,30 @@ import { URL } from 'url';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import Database from 'better-sqlite3';
+import pg from 'pg';
+import { readFileSync, existsSync } from 'fs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const PORT = process.env.PORT || 3001;
 const LOG_FILE = '/var/log/ratewatch/signups.csv';
-const DB_PATH = path.join(__dirname, 'data', 'rates-history.db');
+
+// Load DATABASE_URL from .env if not in environment
+let DATABASE_URL = process.env.DATABASE_URL;
+if (!DATABASE_URL) {
+  const envPath = path.join(__dirname, '.env');
+  if (existsSync(envPath)) {
+    const envFile = readFileSync(envPath, 'utf8');
+    DATABASE_URL = envFile.match(/DATABASE_URL=(.*)/)?.[1]?.trim();
+  }
+}
 
 if (!RESEND_API_KEY) {
   console.error('ERROR: RESEND_API_KEY env var required');
+  process.exit(1);
+}
+if (!DATABASE_URL) {
+  console.error('ERROR: DATABASE_URL env var required');
   process.exit(1);
 }
 
@@ -28,19 +42,12 @@ if (!fs.existsSync(LOG_FILE)) {
   fs.writeFileSync(LOG_FILE, 'timestamp,email,zip\n');
 }
 
-// Lazy DB connection for chart data
-let _db;
-function getDb() {
-  if (!_db) {
-    _db = new Database(DB_PATH, { readonly: true });
-  }
-  return _db;
-}
+const pool = new pg.Pool({ connectionString: DATABASE_URL });
 
 function corsHeaders() {
   return {
     'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
     'Content-Type': 'application/json',
   };
@@ -70,7 +77,6 @@ async function sendEmail(to, subject, html) {
 async function handleSignup(email, zip) {
   const zipText = zip ? ` (${zip})` : '';
 
-  // 1. Confirmation to subscriber
   await sendEmail(
     email,
     "You're on the list — Ohio Rate Watch",
@@ -94,24 +100,20 @@ async function handleSignup(email, zip) {
     `
   );
 
-  // 2. Notification to owner
   await sendEmail(
     'hello@ohioratewatch.com',
     `New signup: ${email}${zipText}`,
     `<p>New waitlist signup:<br><strong>${email}</strong>${zipText ? `<br>Zip: ${zip}` : ''}<br>${new Date().toLocaleString('en-US', { timeZone: 'America/New_York' })} ET</p>`
   );
 
-  // 3. Log to CSV
   const row = `${new Date().toISOString()},${email},${zip || ''}\n`;
   fs.appendFileSync(LOG_FILE, row);
 }
 
-
-// Simple in-memory rate limiter: max 5 signups per IP per hour
 const ipSignupLog = new Map();
 function isRateLimited(ip) {
   const now = Date.now();
-  const window = 60 * 60 * 1000; // 1 hour
+  const window = 60 * 60 * 1000;
   const max = 5;
   const hits = (ipSignupLog.get(ip) || []).filter(t => now - t < window);
   if (hits.length >= max) return true;
@@ -121,48 +123,49 @@ function isRateLimited(ip) {
 }
 
 /**
- * Build chart data from real DB queries.
- * Returns { columbiaGasSco, enbridgeGasSco, centerpointSco, henryHub, bestFixed, events }
+ * Build chart data from real DB queries (async).
  */
-function buildChartData(longterm = false) {
-  const db = getDb();
-
-  function getScoSeries(territory_id) {
-    return db.prepare(`
-      SELECT strftime('%Y-%m', date) as month, rate
+async function buildChartData(longterm = false) {
+  async function getScoSeries(territory_id) {
+    const { rows } = await pool.query(`
+      SELECT to_char(date::date, 'YYYY-MM') as month, rate
       FROM rate_history
-      WHERE territory_id = ? AND type = 'sco'
+      WHERE territory_id = $1 AND type = 'sco'
       ORDER BY date ASC
-    `).all(territory_id).map(r => ({ date: r.month, value: r.rate }));
+    `, [territory_id]);
+    return rows.map(r => ({ date: r.month, value: r.rate }));
   }
 
   const hhStart = longterm ? '2000-01-01' : '2018-01-01';
-  const henryHub = db.prepare(`
-    SELECT strftime('%Y-%m', scraped_at) as month,
-           ROUND(AVG(price) / 10.0, 4) as value
+  const hhResult = await pool.query(`
+    SELECT to_char(scraped_at::date, 'YYYY-MM') as month,
+           ROUND((AVG(price) / 10.0)::numeric, 4) as value
     FROM rate_snapshots
     WHERE supplier_name = 'Henry Hub Spot Price'
       AND price IS NOT NULL
-      AND scraped_at >= ?
+      AND scraped_at >= $1
     GROUP BY month
     ORDER BY month ASC
-  `).all(hhStart).map(r => ({ date: r.month, value: r.value }));
+  `, [hhStart]);
+  const henryHub = hhResult.rows.map(r => ({ date: r.month, value: parseFloat(r.value) }));
 
-  const bestFixedRow = db.prepare(`
+  const bestFixedResult = await pool.query(`
     SELECT MIN(price) as best
     FROM rate_snapshots
     WHERE rate_type = 'fixed'
       AND price IS NOT NULL
       AND price > 0.1
       AND category = 'NaturalGas'
-      AND scraped_at >= datetime('now', '-7 days')
-  `).get();
-  const bestFixed = bestFixedRow?.best ? Math.round(bestFixedRow.best * 1000) / 1000 : 0.499;
+      AND scraped_at >= (NOW() - INTERVAL '7 days')::TEXT
+  `);
+  const bestFixed = bestFixedResult.rows[0]?.best
+    ? Math.round(bestFixedResult.rows[0].best * 1000) / 1000
+    : 0.499;
 
   const result = {
-    columbiaGasSco: getScoSeries(8),
-    enbridgeGasSco: getScoSeries(1),
-    centerpointSco: getScoSeries(11),
+    columbiaGasSco: await getScoSeries(8),
+    enbridgeGasSco: await getScoSeries(1),
+    centerpointSco: await getScoSeries(11),
     henryHub,
     bestFixed,
     events: [
@@ -174,10 +177,9 @@ function buildChartData(longterm = false) {
   };
 
   if (longterm) {
-    // EIA Ohio Residential 2000–2017 as pre-SCO reference baseline
-    result.eiaOhioRef = db.prepare(`
-      SELECT strftime('%Y-%m', scraped_at) as month,
-             ROUND(AVG(sco_rate), 4) as value
+    const eiaResult = await pool.query(`
+      SELECT to_char(scraped_at::date, 'YYYY-MM') as month,
+             ROUND(AVG(sco_rate)::numeric, 4) as value
       FROM rate_snapshots
       WHERE territory_id = 0
         AND rate_type = 'reference'
@@ -186,8 +188,8 @@ function buildChartData(longterm = false) {
         AND scraped_at < '2018-01-01'
       GROUP BY month
       ORDER BY month ASC
-    `).all().map(r => ({ date: r.month, value: r.value }));
-
+    `);
+    result.eiaOhioRef = eiaResult.rows.map(r => ({ date: r.month, value: parseFloat(r.value) }));
     result.pucoBoundary = '2018-01';
     result.events = [
       { date: '2005-09', label: 'Katrina/Rita Spike', icon: '🌀' },
@@ -211,11 +213,10 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // Historical chart data endpoint — real PUCO SCO data from DB
   if (req.method === 'GET' && url.pathname === '/api/history/chart-data') {
     try {
       const longterm = url.searchParams.get('range') === 'longterm';
-      const chartData = buildChartData(longterm);
+      const chartData = await buildChartData(longterm);
       res.writeHead(200, corsHeaders());
       res.end(JSON.stringify(chartData));
     } catch (err) {
