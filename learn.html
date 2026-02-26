@@ -42,6 +42,8 @@
   .content-section p { font-size: 0.95rem; color: #374151; line-height: 1.7; margin-bottom: 16px; }
   .content-section ul, .content-section ol { margin: 0 0 16px 20px; font-size: 0.95rem; color: #374151; line-height: 1.8; }
   .content-section li { margin-bottom: 6px; }
+  .bill-learn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 12px; }
+  @media (max-width: 640px) { .bill-learn-grid { grid-template-columns: 1fr; } }
 
   /* INFO BOXES */
   .info-box { border-radius: 10px; padding: 18px 22px; margin: 20px 0; font-size: 0.9rem; line-height: 1.6; }
@@ -197,9 +199,111 @@
 <hr class="section-divider">
 
 <!-- SECTION 3: HISTORICAL CHART -->
+
+<hr class="section-divider">
+
+<div class="content-section" id="understanding-your-bill">
+  <div class="section-num">Section 3</div>
+  <h2>Understanding Your Bill — Line by Line</h2>
+  <p>Your natural gas bill has <strong>two completely separate parts</strong>: delivery and supply. Most people see one big total and never look further. Once you understand the difference, shopping for a better rate becomes obvious — and the savings become very real.</p>
+
+  <div style="background:linear-gradient(135deg,#fefce8,#fef3c7);border:2px solid #fbbf24;border-radius:12px;padding:20px 24px;display:flex;gap:16px;align-items:flex-start;margin-bottom:28px;">
+    <div style="font-size:1.6rem;flex-shrink:0;margin-top:2px;">💡</div>
+    <div>
+      <h4 style="font-size:1rem;font-weight:800;color:#78350f;margin-bottom:6px;">Only one part of your bill can change when you switch suppliers.</h4>
+      <p style="font-size:0.88rem;color:#78350f;line-height:1.55;margin:0;">Columbia Gas charges for <strong>delivery</strong> (pipes, meter, infrastructure) and <strong>supply</strong> (the gas itself). Switching to a competing supplier only changes the supply line. Columbia Gas still delivers your gas, responds to emergencies, and maintains your service — nothing about that changes.</p>
+    </div>
+  </div>
+
+  <div class="bill-learn-grid">
+    <div style="border-radius:14px;overflow:hidden;border:2px solid #bfdbfe;">
+      <div style="padding:14px 20px;background:#eff6ff;color:#1e3a8a;font-size:0.85rem;font-weight:700;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
+        <span>🏠 Delivery — Columbia Gas</span>
+        <span style="background:#1e40af;color:#fff;font-size:0.7rem;padding:2px 9px;border-radius:10px;white-space:nowrap;">FIXED — Can't change</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;padding:10px 20px;border-bottom:1px solid #f3f4f6;font-size:0.85rem;gap:12px;">
+        <div><div style="color:#374151;">Fixed Monthly Delivery Charge</div><div style="font-size:0.72rem;color:#9ca3af;margin-top:2px;">Meter, pipes, emergency service. Same every month.</div></div>
+        <div style="font-weight:700;white-space:nowrap;">$39.31</div>
+      </div>
+      <div style="display:flex;justify-content:space-between;padding:10px 20px;border-bottom:1px solid #f3f4f6;font-size:0.85rem;gap:12px;">
+        <div><div style="color:#374151;">Usage Based Charges</div><div style="font-size:0.72rem;color:#9ca3af;margin-top:2px;">Per-ccf distribution. Scales with usage.</div></div>
+        <div style="font-weight:700;white-space:nowrap;">$12.86</div>
+      </div>
+      <div style="display:flex;justify-content:space-between;padding:10px 20px;border-bottom:1px solid #f3f4f6;font-size:0.85rem;gap:12px;">
+        <div><div style="color:#374151;">Infrastructure Riders</div><div style="font-size:0.72rem;color:#9ca3af;margin-top:2px;">Pipeline replacement &amp; safety programs. Can't opt out.</div></div>
+        <div style="font-weight:700;white-space:nowrap;">$12.80</div>
+      </div>
+      <div style="display:flex;justify-content:space-between;padding:10px 20px;border-bottom:1px solid #f3f4f6;font-size:0.85rem;gap:12px;">
+        <div><div style="color:#374151;">Gross Receipts Tax (4.987%)</div><div style="font-size:0.72rem;color:#9ca3af;margin-top:2px;">Ohio state tax on utility revenue.</div></div>
+        <div style="font-weight:700;white-space:nowrap;">$3.24</div>
+      </div>
+      <div style="display:flex;justify-content:space-between;padding:12px 20px;font-weight:800;font-size:0.95rem;background:#eff6ff;color:#1e3a8a;border-top:2px solid #bfdbfe;">
+        <span>Delivery Subtotal</span><span>$68.21</span>
+      </div>
+    </div>
+
+    <div style="border-radius:14px;overflow:hidden;border:2px solid #bbf7d0;">
+      <div style="padding:14px 20px;background:#f0fdf4;color:#14532d;font-size:0.85rem;font-weight:700;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
+        <span>⚡ Supply — Your Supplier</span>
+        <span style="background:#16a34a;color:#fff;font-size:0.7rem;padding:2px 9px;border-radius:10px;white-space:nowrap;">YOU CAN SHOP THIS</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;padding:10px 20px;border-bottom:1px solid #f3f4f6;font-size:0.85rem;gap:12px;">
+        <div><div style="color:#374151;">Gas Supply Cost</div><div style="font-size:0.72rem;color:#9ca3af;margin-top:2px;">118 ccf × $0.499/ccf (best fixed rate example)</div></div>
+        <div style="font-weight:700;white-space:nowrap;">$58.88</div>
+      </div>
+      <div style="display:flex;justify-content:space-between;padding:10px 20px;border-bottom:1px solid #f3f4f6;font-size:0.85rem;gap:12px;">
+        <div><div style="color:#374151;">Sales Tax on Supply</div><div style="font-size:0.72rem;color:#9ca3af;margin-top:2px;">Applied to the gas commodity only.</div></div>
+        <div style="font-weight:700;white-space:nowrap;">$4.71</div>
+      </div>
+      <div style="display:flex;justify-content:space-between;padding:12px 20px;font-weight:800;font-size:0.95rem;background:#f0fdf4;color:#14532d;border-top:2px solid #bbf7d0;">
+        <span>Supply Subtotal</span><span>$63.59</span>
+      </div>
+      <div style="padding:12px 20px;font-size:0.78rem;background:#fefce8;border-top:1px solid #fde68a;">
+        <strong style="color:#78350f;">If on default SCO ($1.071/ccf):</strong><br>
+        118 ccf × $1.071 + tax ≈ <strong style="color:#dc2626;">$133.88</strong><br>
+        vs. $63.59 on fixed — <strong style="color:#16a34a;">saving ~$70/month</strong>
+      </div>
+    </div>
+  </div>
+
+  <p style="font-size:0.78rem;color:#9ca3af;margin:12px 0 24px;font-style:italic;">Example based on a real Columbia Gas of Ohio bill at 118 ccf/month. Your charges vary by usage and rate class.</p>
+
+  <h3 style="font-size:1.05rem;font-weight:800;margin-bottom:10px;color:#1e3a8a;">What are those "rider" charges?</h3>
+  <p style="font-size:0.9rem;color:#374151;line-height:1.65;margin-bottom:16px;">Riders are PUCO-approved fees for infrastructure programs every Ohio utility runs. The names differ by utility but the concept is identical: mandatory charges for replacing aging pipelines, meeting federal safety requirements, and funding system upgrades. <strong>Switching suppliers never eliminates riders.</strong></p>
+
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin-bottom:20px;">
+    <div style="background:#f8f9fa;border-radius:10px;padding:14px 16px;border-left:3px solid #bfdbfe;">
+      <h5 style="font-size:0.78rem;font-weight:700;color:#1e3a8a;margin-bottom:5px;">Infrastructure Replacement Program Rider</h5>
+      <p style="font-size:0.74rem;color:#6b7280;line-height:1.45;margin:0 0 4px;">Replaces older cast iron and bare steel gas distribution pipes across Ohio.</p>
+      <div style="font-size:0.7rem;font-weight:700;color:#374151;">~$5.33/mo</div>
+    </div>
+    <div style="background:#f8f9fa;border-radius:10px;padding:14px 16px;border-left:3px solid #bfdbfe;">
+      <h5 style="font-size:0.78rem;font-weight:700;color:#1e3a8a;margin-bottom:5px;">PHMSA Infrastructure Rider</h5>
+      <p style="font-size:0.74rem;color:#6b7280;line-height:1.45;margin:0 0 4px;">Federal pipeline safety compliance requirements.</p>
+      <div style="font-size:0.7rem;font-weight:700;color:#374151;">~$0.46/mo</div>
+    </div>
+    <div style="background:#f8f9fa;border-radius:10px;padding:14px 16px;border-left:3px solid #bfdbfe;">
+      <h5 style="font-size:0.78rem;font-weight:700;color:#1e3a8a;margin-bottom:5px;">Capital Expenditure Program Rider</h5>
+      <p style="font-size:0.74rem;color:#6b7280;line-height:1.45;margin:0 0 4px;">Major system improvements approved by PUCO.</p>
+      <div style="font-size:0.7rem;font-weight:700;color:#374151;">~$6.14/mo</div>
+    </div>
+    <div style="background:#f8f9fa;border-radius:10px;padding:14px 16px;border-left:3px solid #bfdbfe;">
+      <h5 style="font-size:0.78rem;font-weight:700;color:#1e3a8a;margin-bottom:5px;">Infrastructure Development Rider</h5>
+      <p style="font-size:0.74rem;color:#6b7280;line-height:1.45;margin:0 0 4px;">New gas line extensions and system expansion.</p>
+      <div style="font-size:0.7rem;font-weight:700;color:#374151;">~$0.87/mo</div>
+    </div>
+  </div>
+
+  <div style="padding:14px 18px;background:#f8f9fa;border-radius:10px;font-size:0.83rem;color:#555;line-height:1.6;border-left:3px solid #d1d5db;">
+    <strong>The bottom line:</strong> The <em>only</em> line that changes when you switch suppliers is the <strong>supply cost</strong>. Delivery, riders, and taxes all stay identical. With the SCO at $1.071/ccf today, that one line is costing the average Ohio household $50–$100/month more than it needs to.
+  </div>
+</div>
+
+<hr class="section-divider">
+
 <div class="chart-section" id="history-chart">
   <div class="chart-inner">
-    <div class="section-num">Section 3</div>
+    <div class="section-num">Section 4</div>
     <h2>Ohio Gas Rate History</h2>
     <p>See how SCO rates have moved over time — and why locking in a fixed rate can protect you from spikes.</p>
 
@@ -220,7 +324,7 @@
 
 <!-- SECTION 4: PRICE SPIKES -->
 <div class="content-section" id="price-spikes">
-  <div class="section-num">Section 4</div>
+  <div class="section-num">Section 5</div>
   <h2>What Happened in 2022 (and Why It's Happening Again)</h2>
   <p>In early 2022, Russia's invasion of Ukraine sent global natural gas markets into chaos. European countries scrambled for liquefied natural gas (LNG), which drove up demand and prices worldwide. Ohio SCO rates hit <strong>$1.10/ccf in September 2022</strong> — roughly 4× the COVID-era lows.</p>
   <p>Through 2023 and 2024, prices fell back to a more normal $0.32–$0.50/ccf range as markets stabilized.</p>
@@ -241,7 +345,7 @@
 
 <!-- SECTION 5: GOVERNMENT AGGREGATION -->
 <div class="content-section" id="aggregation">
-  <div class="section-num">Section 5</div>
+  <div class="section-num">Section 6</div>
   <h2>Government Aggregation</h2>
   <p>Ohio law allows municipalities and townships to aggregate the buying power of all residents and negotiate a group gas or electric rate. This is called <strong>Governmental Aggregation</strong>.</p>
   <ul>
@@ -262,7 +366,7 @@
 
 <!-- SECTION 6: YOUR RIGHTS -->
 <div class="content-section" id="rights">
-  <div class="section-num">Section 6</div>
+  <div class="section-num">Section 7</div>
   <h2>Understanding Your Rights as a Shopper</h2>
   <p>Before signing with any natural gas supplier, ask these questions:</p>
   <ul class="checklist">
@@ -285,7 +389,7 @@
 
 <!-- SECTION 7: HOW TO SWITCH -->
 <div class="content-section" id="how-to-switch">
-  <div class="section-num">Section 7</div>
+  <div class="section-num">Section 8</div>
   <h2>Steps to Switch Suppliers</h2>
   <ol class="steps-list">
     <li><strong>Know your current supplier and rate.</strong> Check your bill — it's listed in the Supply section.</li>
@@ -304,7 +408,7 @@
 
 <!-- SECTION 8: GLOSSARY -->
 <div class="content-section" id="glossary">
-  <div class="section-num">Section 8</div>
+  <div class="section-num">Section 9</div>
   <h2>Glossary</h2>
   <p>Plain-English definitions — no jargon.</p>
   <div class="glossary">
