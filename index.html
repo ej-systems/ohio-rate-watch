@@ -782,8 +782,8 @@ async function renderTerritory(tid) {
     if (s.renewablePct >= 100) badges += '<span style="background:#d1fae5;color:#065f46;border:1px solid #6ee7b7;padding:1px 7px;border-radius:4px;font-size:0.72rem;font-weight:700;margin-right:5px;">\ud83c\udf31 100% Renewable</span>';
     const _bundleText = (s.offerDetails || '') + ' ' + (s.promoDetails || '');
     if (/bundle|electric.*gas|gas.*electric/i.test(_bundleText)) badges += '<span style="background:#fce7f3;color:#9d174d;border:1px solid #f9a8d4;padding:1px 7px;border-radius:4px;font-size:0.72rem;font-weight:700;margin-right:5px;">\u26a0 Requires bundle</span>';
-    if (etf > 0) badges += '<span style="background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;padding:1px 7px;border-radius:4px;font-size:0.72rem;font-weight:700;margin-right:5px;">$' + etf + ' ETF</span>';
-    if (mfee > 0) badges += '<span style="background:#fffbeb;color:#b45309;border:1px solid #fcd34d;padding:1px 7px;border-radius:4px;font-size:0.72rem;font-weight:700;margin-right:5px;">$' + mfee + '/mo fee</span>';
+    if (etf > 0) badges += '<span style="background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;padding:1px 7px;border-radius:4px;font-size:0.72rem;font-weight:700;margin-right:5px;">$' + etf.toFixed(2) + ' ETF</span>';
+    if (mfee > 0) badges += '<span style="background:#fffbeb;color:#b45309;border:1px solid #fcd34d;padding:1px 7px;border-radius:4px;font-size:0.72rem;font-weight:700;margin-right:5px;">$' + mfee.toFixed(2) + '/mo fee</span>';
     if (s.termMonths > 0) badges += '<span style="background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;padding:1px 7px;border-radius:4px;font-size:0.72rem;font-weight:700;margin-right:5px;">' + s.termMonths + ' mo</span>';
     return '<tr data-ratetype="' + s.rateType + '">' +
       '<td style="padding:14px 16px;vertical-align:top;">' +
@@ -796,9 +796,8 @@ async function renderTerritory(tid) {
         '<span style="font-size:1.2rem;font-weight:800;color:#111;">' + price + '</span>' +
         (savings && savings > 0 ? '<span style="background:#d1fae5;color:#065f46;padding:2px 8px;border-radius:4px;font-size:0.78rem;font-weight:700;margin-left:8px;">Save ' + savings + '%</span>' : '') +
       '</td>' +
-      '<td style="padding:14px 16px;color:#374151;vertical-align:middle;">' + (s.termMonths || '\u2014') + ' mo.</td>' +
-      '<td style="padding:14px 16px;font-weight:700;color:' + (etf > 0 ? '#dc2626' : '#16a34a') + ';vertical-align:middle;">$' + etf + '</td>' +
-      '<td style="padding:14px 16px;font-weight:700;color:' + (mfee > 0 ? '#dc2626' : '#16a34a') + ';vertical-align:middle;">$' + mfee + '</td>' +
+      '<td style="padding:14px 16px;font-weight:700;color:' + (etf > 0 ? '#dc2626' : '#16a34a') + ';vertical-align:middle;">$' + etf.toFixed(2) + '</td>' +
+      '<td style="padding:14px 16px;font-weight:700;color:' + (mfee > 0 ? '#dc2626' : '#16a34a') + ';vertical-align:middle;">$' + mfee.toFixed(2) + '</td>' +
       (s.signUpUrl
         ? '<td style="padding:14px 16px;vertical-align:middle;"><a href="' + s.signUpUrl + '" target="_blank" rel="noopener" style="background:#1565c0;color:#fff;padding:8px 18px;border-radius:8px;font-size:0.88rem;font-weight:700;text-decoration:none;white-space:nowrap;display:inline-block;">Sign Up \u2192</a></td>'
         : '<td></td>') +
@@ -806,7 +805,7 @@ async function renderTerritory(tid) {
   }
 
   function sectionDivider(label, color, bg, borderColor) {
-    return '<tr class="section-label-row"><td colspan="6" style="padding:8px 16px 4px;font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;color:' + color + ';background:' + bg + ';border-top:2px solid ' + borderColor + ';">' + label + '</td></tr>';
+    return '<tr class="section-label-row"><td colspan="5" style="padding:8px 16px 4px;font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;color:' + color + ';background:' + bg + ';border-top:2px solid ' + borderColor + ';">' + label + '</td></tr>';
   }
 
   const fixedPlans = suppliers.filter(s => s.rateType === 'fixed');
@@ -829,7 +828,6 @@ async function renderTerritory(tid) {
         '<span style="color:#1565c0;font-weight:600;">\u2139\ufe0f ' + info.name + ' Default Rate (SCO) \u2014 what you pay if you haven\u2019t switched</span>' +
       '</td>' +
       '<td style="padding:12px 16px;font-weight:800;color:#dc2626;font-size:1.1rem;">$' + info.sco.toFixed(3) + '</td>' +
-      '<td style="padding:12px 16px;color:#6b7280;">Monthly</td>' +
       '<td style="padding:12px 16px;color:#6b7280;">\u2014</td>' +
       '<td style="padding:12px 16px;color:#6b7280;">\u2014</td>' +
       '<td></td></tr>'
@@ -859,7 +857,7 @@ async function renderTerritory(tid) {
     '<div style="overflow-x:auto;">' +
     '<table class="rate-table">' +
     '<thead><tr>' +
-    '<th>Supplier</th><th>Rate ($/ccf)</th><th>Term</th><th>Early Term Fee</th><th>Monthly Fee</th><th></th>' +
+    '<th>Supplier</th><th>Rate ($/ccf)</th><th>Early Term Fee</th><th>Monthly Fee</th><th></th>' +
     '</tr></thead>' +
     '<tbody>' + rows + scoRowHtml + '</tbody>' +
     '</table></div>' +
