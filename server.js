@@ -234,6 +234,92 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  if (req.method === 'GET' && url.pathname === '/api/rates') {
+    const territory = parseInt(url.searchParams.get('territory') || '8');
+    const category = url.searchParams.get('category') || 'NaturalGas';
+    const rateCode = parseInt(url.searchParams.get('rateCode') || '1');
+    const today = new Date().toISOString().slice(0, 10);
+
+    try {
+      // Query supplier_offers from PostgreSQL
+      const { rows: dbOffers } = await pool.query(`
+        SELECT 
+          supplier_name, company_name, price, rate_type, term_months,
+          etf, monthly_fee, is_intro, is_promo, offer_details,
+          promo_details, intro_details, sign_up_url, phone, website, offer_id
+        FROM supplier_offers
+        WHERE territory_id = $1 
+          AND category = $2 
+          AND rate_code = $3
+          AND DATE(scraped_at) = $4
+        ORDER BY price ASC
+      `, [territory, category, rateCode, today]);
+
+      if (dbOffers.length > 0) {
+        const isMCF = territory === 1;
+        const suppliers = dbOffers.map(o => ({
+          name: o.supplier_name,
+          companyName: o.company_name,
+          price: isMCF && o.price ? Math.round(o.price / 10 * 10000) / 10000 : o.price,
+          priceUnit: 'ccf',
+          originalPrice: isMCF ? o.price : null,
+          originalUnit: isMCF ? 'mcf' : null,
+          rateType: o.rate_type,
+          termMonths: o.term_months,
+          earlyTerminationFee: o.etf,
+          monthlyFee: o.monthly_fee,
+          introPrice: o.is_intro === true,
+          hasPromo: o.is_promo === true,
+          offerDetails: o.offer_details,
+          promoDetails: o.promo_details,
+          introDetails: o.intro_details,
+          signUpUrl: o.sign_up_url,
+          phone: o.phone,
+          website: o.website,
+          offerId: o.offer_id,
+        }));
+
+        const result = {
+          territoryId: territory,
+          category,
+          rateCode,
+          scrapedAt: today,
+          defaultRate: null,
+          defaultRateText: null,
+          suppliers,
+          totalCount: suppliers.length,
+          isMCFConverted: isMCF,
+          source: 'db',
+        };
+
+        res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'public, max-age=300' });
+        res.end(JSON.stringify(result));
+        return;
+      }
+
+      // Fallback if no data for today
+      res.writeHead(200, {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+        'Cache-Control': 'public, max-age=300'
+      });
+      res.end(JSON.stringify({
+        territoryId: territory,
+        category,
+        rateCode,
+        scrapedAt: today,
+        suppliers: [],
+        totalCount: 0,
+        source: 'empty'
+      }));
+    } catch (err) {
+      console.error('[api/rates] error:', err.message);
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: err.message }));
+    }
+    return;
+  }
+
   if (req.method === 'POST' && url.pathname === '/api/subscribe') {
     let body = '';
     req.on('data', (chunk) => (body += chunk));
