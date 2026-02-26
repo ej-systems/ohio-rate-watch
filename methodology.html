@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>About & Methodology — Ohio Rate Watch</title>
+  <meta name="description" content="How Ohio Rate Watch collects, processes, and displays natural gas rate data. Independent, non-commercial, PUCO-sourced.">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f8f9fa; color: #1a1a2e; line-height: 1.7; }
+    nav { background: #fff; border-bottom: 2px solid #e8f4f8; padding: 0 24px; display: flex; align-items: center; justify-content: space-between; height: 64px; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+    nav .logo { font-size: 1.25rem; font-weight: 800; color: #1565c0; text-decoration: none; }
+    nav .logo span { color: #f59e0b; }
+    nav a { color: #555; text-decoration: none; font-size: 0.9rem; font-weight: 500; }
+    nav a:hover { color: #1565c0; }
+    .page-hero { background: linear-gradient(135deg, #1565c0 0%, #0d47a1 100%); color: #fff; padding: 56px 24px 48px; text-align: center; }
+    .page-hero h1 { font-size: 2rem; font-weight: 800; margin-bottom: 12px; }
+    .page-hero p { opacity: 0.85; max-width: 560px; margin: 0 auto; font-size: 1.05rem; }
+    .content { max-width: 760px; margin: 0 auto; padding: 48px 24px 80px; }
+    .mission-box { background: #e8f5e9; border-left: 4px solid #2e7d32; border-radius: 0 8px 8px 0; padding: 24px 28px; margin-bottom: 48px; }
+    .mission-box p { color: #1b5e20; font-size: 1.05rem; line-height: 1.8; }
+    .mission-box cite { display: block; margin-top: 12px; font-size: 0.85rem; color: #388e3c; font-style: normal; }
+    h2 { font-size: 1.3rem; font-weight: 700; color: #1565c0; margin: 40px 0 12px; border-bottom: 2px solid #e8f4f8; padding-bottom: 8px; }
+    h2:first-of-type { margin-top: 0; }
+    p { color: #374151; margin-bottom: 14px; }
+    ul { color: #374151; margin: 0 0 14px 20px; }
+    ul li { margin-bottom: 6px; }
+    .commitment-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin: 20px 0; }
+    .commitment-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 20px; }
+    .commitment-card .icon { font-size: 1.5rem; margin-bottom: 8px; }
+    .commitment-card strong { display: block; font-size: 0.95rem; color: #1a1a2e; margin-bottom: 4px; }
+    .commitment-card p { font-size: 0.85rem; color: #6b7280; margin: 0; }
+    .pill { display: inline-block; background: #dcfce7; color: #166534; font-size: 0.78rem; font-weight: 600; padding: 2px 10px; border-radius: 20px; margin-left: 8px; vertical-align: middle; }
+    .pill.no { background: #fee2e2; color: #991b1b; }
+    code { background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-size: 0.88rem; font-family: 'SF Mono', Menlo, monospace; }
+    footer { background: #111827; color: #9ca3af; padding: 28px 24px; text-align: center; font-size: 0.82rem; line-height: 1.8; }
+    footer strong { color: #fff; }
+    footer a { color: #60a5fa; text-decoration: none; }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a href="/" class="logo">Ohio<span>Rate</span>Watch <span style="font-size:0.55rem;background:#f59e0b;color:#fff;padding:2px 7px;border-radius:20px;font-weight:700;letter-spacing:0.5px;vertical-align:middle;">BETA</span></a>
+  <div style="display:flex;gap:20px;align-items:center;">
+    <a href="/learn">Learn</a>
+    <a href="/methodology" style="color:#1565c0;font-weight:600;">About</a>
+    <a href="/">Compare Rates</a>
+  </div>
+</nav>
+
+<div class="page-hero">
+  <h1>About &amp; Methodology</h1>
+  <p>How we collect, verify, and display Ohio natural gas rate data — and why independence matters.</p>
+</div>
+
+<div class="content">
+
+  <div class="mission-box">
+    <p>Ohio Rate Watch is an independent, non-commercial tool for Ohio natural gas customers. We don't sell anything, accept commissions, or have relationships with any supplier. Rates are sorted by price — nothing else. Our only job is to make PUCO's public data easier to read.</p>
+    <cite>— Jim Fano, founder · Cleveland, Ohio</cite>
+  </div>
+
+  <h2>Our Commitments</h2>
+  <div class="commitment-grid">
+    <div class="commitment-card">
+      <div class="icon">🚫</div>
+      <strong>No supplier commissions</strong>
+      <p>We receive zero compensation from any supplier, utility, or energy broker. Ever.</p>
+    </div>
+    <div class="commitment-card">
+      <div class="icon">📊</div>
+      <strong>Price-only ranking</strong>
+      <p>Rates are sorted lowest to highest. No "featured" or "promoted" slots exist in this codebase.</p>
+    </div>
+    <div class="commitment-card">
+      <div class="icon">🔓</div>
+      <strong>Public data, made usable</strong>
+      <p>Everything here comes from PUCO's own publicly available portal. We just make it readable.</p>
+    </div>
+    <div class="commitment-card">
+      <div class="icon">👤</div>
+      <strong>No tracking</strong>
+      <p>No ad networks. No analytics pixels. No selling of subscriber data.</p>
+    </div>
+  </div>
+
+  <h2>Data Source</h2>
+  <p>All rate data is scraped daily from <a href="https://www.energychoice.ohio.gov" target="_blank" rel="noopener" style="color:#1565c0;">energychoice.ohio.gov</a> — the official Ohio PUCO supplier comparison portal operated by the Public Utilities Commission of Ohio. We do not create, modify, or editorialize the rate data.</p>
+  <p>Average monthly bill benchmarks by city are sourced from the <a href="https://www.puco.ohio.gov/utilities/electricity/resources/ohio-utility-rate-survey" target="_blank" rel="noopener" style="color:#1565c0;">PUCO Ohio Utility Rate Survey</a>, updated monthly.</p>
+
+  <h2>Update Schedule</h2>
+  <ul>
+    <li>Supplier rates are scraped once per day at approximately <strong>2:00 AM ET</strong> via automated script</li>
+    <li>If a scrape returns significantly fewer results than expected, the previous day's data is preserved and an internal alert fires — we don't publish partial or stale data silently</li>
+    <li>The "Last updated" timestamp shown on the rate table reflects the actual scrape time, not a cached display time</li>
+  </ul>
+
+  <h2>What We Collect &amp; Store</h2>
+  <p>For each supplier offer, we store:</p>
+  <ul>
+    <li>Supplier name, rate ($/ccf), rate type (fixed/variable)</li>
+    <li>Contract term length (months)</li>
+    <li>Early termination fee (ETF)</li>
+    <li>Monthly fees</li>
+    <li>Whether the rate is introductory/promotional</li>
+    <li>Bundle requirements (e.g., requires electric enrollment)</li>
+    <li>Renewable / carbon offset indicators (from offer description text)</li>
+  </ul>
+  <p>We retain historical daily snapshots so rate trends can be tracked over time.</p>
+
+  <h2>How Alerts Work</h2>
+  <p>When a daily scrape completes successfully, it is compared against the prior successful scrape. An alert is triggered when:</p>
+  <ul>
+    <li>Any supplier rate changes by more than <strong>5%</strong> and at least <strong>$0.01/ccf</strong></li>
+    <li>The utility's default Standard Choice Offer (SCO) rate changes</li>
+    <li>A supplier offer appears or disappears entirely</li>
+  </ul>
+  <p>Email alerts are sent via <a href="https://resend.com" target="_blank" rel="noopener" style="color:#1565c0;">Resend</a>. We do not sell or share subscriber email addresses.</p>
+
+  <h2>Ranking Logic</h2>
+  <p>Supplier offers are displayed sorted by <strong>price ascending</strong> — cheapest first — within two categories: fixed-rate plans and variable-rate plans. That's it.</p>
+  <ul>
+    <li><span class="pill no">Never</span> paid or "featured" placement</li>
+    <li><span class="pill no">Never</span> affiliate or referral links</li>
+    <li><span class="pill no">Never</span> supplier sponsorships</li>
+    <li><span class="pill">Always</span> introductory/promotional rates clearly labeled</li>
+    <li><span class="pill">Always</span> bundle requirements disclosed upfront</li>
+    <li><span class="pill">Always</span> ETF and monthly fees shown in the table</li>
+  </ul>
+
+  <h2>Technology Stack</h2>
+  <p>Ohio Rate Watch is a small, independent project built to be simple and maintainable:</p>
+  <ul>
+    <li><strong>Backend:</strong> Node.js / Express, hosted on <a href="https://railway.app" target="_blank" rel="noopener" style="color:#1565c0;">Railway</a></li>
+    <li><strong>Database:</strong> PostgreSQL (managed, Railway)</li>
+    <li><strong>Frontend:</strong> Vanilla HTML/CSS/JS — no frameworks, no trackers</li>
+    <li><strong>Source code:</strong> <a href="https://github.com/paradosi/ohio-rate-watch" target="_blank" rel="noopener" style="color:#1565c0;">github.com/paradosi/ohio-rate-watch</a></li>
+  </ul>
+
+  <h2>Who Built This</h2>
+  <p>Ohio Rate Watch was built by <strong>Jim Fano</strong>, a software developer in Parma, Ohio. It started as a personal project after noticing how difficult it was to make sense of PUCO's rate comparison tools as a normal consumer.</p>
+  <p>This is a side project, not a business. If it helps Ohio residents save money on their gas bill, that's the whole point.</p>
+  <p>Questions, corrections, or feedback: <a href="mailto:hello@ohioratewatch.com" style="color:#1565c0;">hello@ohioratewatch.com</a></p>
+
+</div>
+
+<footer>
+  <strong>OhioRateWatch.com</strong> · A project of EJ Systems LLC · Cleveland, Ohio · <a href="tel:8334317283">833.431.RATE</a><br>
+  <br>
+  <strong style="color:#e5e7eb;">Independent &amp; Non-Commercial</strong> — We do not receive commissions from suppliers. Rates are sorted by price only. No featured listings. Ever.<br>
+  <br>
+  Rate data sourced from <a href="https://www.energychoice.ohio.gov" target="_blank">PUCO Energy Choice Ohio</a>. Not affiliated with any supplier, Columbia Gas, or any utility company.<br>
+  Always verify current rates, terms, and fees directly with suppliers before switching service.<br>
+  <br>
+  Questions or concerns? Contact the <a href="https://www.puco.ohio.gov" target="_blank">Public Utilities Commission of Ohio (PUCO)</a> at 1-800-686-7826
+  or the <a href="https://www.pickocc.org" target="_blank">Ohio Consumers' Counsel (OCC)</a> at 1-877-742-5622.
+</footer>
+
+</body>
+</html>

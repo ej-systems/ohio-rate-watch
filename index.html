@@ -212,6 +212,7 @@
   <a href="/" class="logo" style="text-decoration:none;">Ohio<span>Rate</span>Watch <span style="font-size:0.55rem;background:#f59e0b;color:#fff;padding:2px 7px;border-radius:20px;font-weight:700;letter-spacing:0.5px;vertical-align:middle;">BETA</span></a>
   <div style="display:flex;gap:20px;align-items:center;">
     <a href="/learn" style="color:#555;text-decoration:none;font-size:0.9rem;font-weight:500;">Learn</a>
+    <a href="/methodology" style="color:#555;text-decoration:none;font-size:0.9rem;font-weight:500;">About</a>
     <a href="#" style="color:#555;text-decoration:none;font-size:0.9rem;font-weight:500;">Sign Up for Free Alerts</a>
   </div>
 </nav>
@@ -660,6 +661,9 @@
 <footer>
   <strong>OhioRateWatch.com</strong> · A project of EJ Systems LLC · Cleveland, Ohio · <a href="tel:8334317283">833.431.RATE</a><br>
   <br>
+  <strong style="color:#e5e7eb;">Independent &amp; Non-Commercial</strong> — We do not receive commissions from suppliers. Rates are sorted by price only. No featured listings. Ever.<br>
+  <a href="/methodology" style="color:#60a5fa;">How our data works →</a><br>
+  <br>
   Rate data sourced from <a href="https://www.energychoice.ohio.gov" target="_blank">PUCO Energy Choice Ohio</a>. Not affiliated with any supplier, Columbia Gas, or any utility company.<br>
   Always verify current rates, terms, and fees directly with suppliers before switching service.<br>
   <br>
@@ -807,7 +811,7 @@ async function renderTerritory(tid) {
       '<td style="padding:14px 16px;font-weight:700;color:' + (etf > 0 ? '#dc2626' : '#16a34a') + ';vertical-align:middle;">$' + etf.toFixed(2) + '</td>' +
       '<td style="padding:14px 16px;font-weight:700;color:' + (mfee > 0 ? '#dc2626' : '#16a34a') + ';vertical-align:middle;">$' + mfee.toFixed(2) + '</td>' +
       (s.signUpUrl
-        ? '<td style="padding:14px 16px;vertical-align:middle;"><a href="' + s.signUpUrl + '" target="_blank" rel="noopener" style="background:#1565c0;color:#fff;padding:8px 18px;border-radius:8px;font-size:0.88rem;font-weight:700;text-decoration:none;white-space:nowrap;display:inline-block;">Sign Up \u2192</a></td>'
+        ? '<td style="padding:14px 16px;vertical-align:middle;"><a href="' + s.signUpUrl + '" target="_blank" rel="noopener" style="background:#1565c0;color:#fff;padding:8px 18px;border-radius:8px;font-size:0.88rem;font-weight:700;text-decoration:none;white-space:nowrap;display:inline-block;">View Offer \u2192</a></td>'
         : '<td></td>') +
       '</tr>';
   }
