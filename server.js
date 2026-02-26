@@ -44,13 +44,28 @@ if (!fs.existsSync(LOG_FILE)) {
 
 const pool = new pg.Pool({ connectionString: DATABASE_URL });
 
-function corsHeaders() {
+function allHeaders() {
   return {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
     'Content-Type': 'application/json',
   };
+}
+
+function securityHeaders() {
+  return {
+    'Strict-Transport-Security': 'max-age=31536000; includeSubDomains; preload',
+    'X-Frame-Options': 'DENY',
+    'X-Content-Type-Options': 'nosniff',
+    'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; connect-src 'self' https://api.resend.com",
+    'Referrer-Policy': 'strict-origin-when-cross-origin',
+    'Permissions-Policy': 'geolocation=(), microphone=(), camera=()',
+  };
+}
+
+function allHeaders(headers = {}) {
+  return { ...securityHeaders(), ...allHeaders(), ...headers };
 }
 
 async function sendEmail(to, subject, html) {
@@ -208,7 +223,7 @@ const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://localhost`);
 
   if (req.method === 'OPTIONS') {
-    res.writeHead(204, corsHeaders());
+    res.writeHead(204, allHeaders());
     res.end();
     return;
   }
@@ -217,11 +232,11 @@ const server = http.createServer(async (req, res) => {
     try {
       const longterm = url.searchParams.get('range') === 'longterm';
       const chartData = await buildChartData(longterm);
-      res.writeHead(200, corsHeaders());
+      res.writeHead(200, allHeaders());
       res.end(JSON.stringify(chartData));
     } catch (err) {
       console.error('[chart-data] DB error:', err.message);
-      res.writeHead(500, corsHeaders());
+      res.writeHead(500, allHeaders());
       res.end(JSON.stringify({ error: 'Failed to load chart data' }));
     }
     return;
@@ -229,7 +244,7 @@ const server = http.createServer(async (req, res) => {
 
   if (req.method === 'GET' && url.pathname === '/api/health') {
     const signups = fs.readFileSync(LOG_FILE, 'utf8').trim().split('\n').length - 1;
-    res.writeHead(200, corsHeaders());
+    res.writeHead(200, allHeaders());
     res.end(JSON.stringify({ ok: true, signups }));
     return;
   }
@@ -330,7 +345,7 @@ const server = http.createServer(async (req, res) => {
       try {
         const ip = req.headers['x-forwarded-for']?.split(',')[0].trim() || req.socket.remoteAddress;
         if (isRateLimited(ip)) {
-          res.writeHead(429, corsHeaders());
+          res.writeHead(429, allHeaders());
           res.end(JSON.stringify({ error: 'Too many requests. Please try again later.' }));
           return;
         }
@@ -338,7 +353,7 @@ const server = http.createServer(async (req, res) => {
         const { email, zip } = JSON.parse(body);
 
         if (!email || !email.includes('@') || !email.includes('.')) {
-          res.writeHead(400, corsHeaders());
+          res.writeHead(400, allHeaders());
           res.end(JSON.stringify({ error: 'Valid email required' }));
           return;
         }
@@ -346,11 +361,11 @@ const server = http.createServer(async (req, res) => {
         await handleSignup(email.toLowerCase().trim(), zip?.trim() || '');
 
         console.log(`[signup] ${email} ${zip || ''} ${new Date().toISOString()}`);
-        res.writeHead(200, corsHeaders());
+        res.writeHead(200, allHeaders());
         res.end(JSON.stringify({ ok: true, message: "You're on the list!" }));
       } catch (err) {
         console.error('[error]', err.message);
-        res.writeHead(500, corsHeaders());
+        res.writeHead(500, allHeaders());
         res.end(JSON.stringify({ error: 'Something went wrong, please try again.' }));
       }
     });
@@ -362,13 +377,13 @@ const server = http.createServer(async (req, res) => {
     const cronSecret = process.env.CRON_SECRET;
     const authHeader = req.headers['x-cron-secret'] || '';
     if (!cronSecret || authHeader !== cronSecret) {
-      res.writeHead(401, corsHeaders());
+      res.writeHead(401, allHeaders());
       res.end(JSON.stringify({ error: 'Unauthorized' }));
       return;
     }
 
     // Run scraper in background, return immediately
-    res.writeHead(200, corsHeaders());
+    res.writeHead(200, allHeaders());
     res.end(JSON.stringify({ ok: true, message: 'Daily check started' }));
 
     // Execute the scraper logic
@@ -535,13 +550,13 @@ const server = http.createServer(async (req, res) => {
       const ext = path.extname(filePath).toLowerCase();
       const mime = MIME_TYPES[ext] || 'application/octet-stream';
       const content = readFileSync(filePath);
-      res.writeHead(200, { 'Content-Type': mime, 'Cache-Control': 'public, max-age=3600' });
+      res.writeHead(200, allHeaders({ 'Content-Type': mime, 'Cache-Control': 'public, max-age=3600' }));
       res.end(content);
       return;
     }
   } catch (e) { /* fall through to 404 */ }
 
-  res.writeHead(404, corsHeaders());
+  res.writeHead(404, allHeaders());
   res.end(JSON.stringify({ error: 'Not found' }));
 });
 
