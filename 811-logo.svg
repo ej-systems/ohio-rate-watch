@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 80">
+  <!-- Orange background badge -->
+  <rect width="120" height="80" rx="8" fill="#f97316"/>
+  <!-- 811 text -->
+  <text x="60" y="48" font-family="Arial Black,Arial,sans-serif" font-weight="900" font-size="36" fill="white" text-anchor="middle">811</text>
+  <!-- Bottom label -->
+  <rect x="0" y="58" width="120" height="22" rx="0" fill="#1e293b"/>
+  <rect x="0" y="58" width="120" height="22" rx="0" fill="#1e293b"/>
+  <text x="60" y="73" font-family="Arial,sans-serif" font-size="8" fill="white" text-anchor="middle" font-weight="700">CALL BEFORE YOU DIG</text>
+</svg>
