@@ -770,47 +770,72 @@ async function renderTerritory(tid) {
     scoBar.innerHTML = '<strong>' + info.name + '</strong>: ' + info.scoLabel;
   }
 
-  // Build table
-  let rows = '';
-  for (const s of suppliers.slice(0, 30)) {
-    const priceDisplay = '$' + s.price.toFixed(4) + '/ccf';
+  // Build rows — old card-style layout
+  function buildRow(s) {
+    const price = '$' + s.price.toFixed(3);
     const savings = info.sco ? Math.round((1 - s.price / info.sco) * 100) : null;
-    const savBadge = savings && savings > 0
-      ? '<span style="background:#d1fae5;color:#065f46;padding:1px 6px;border-radius:4px;font-size:0.75em;margin-left:6px;">-' + savings + '%</span>'
-      : '';
-    const mfee = s.monthlyFee ? '+$' + s.monthlyFee + '/mo' : '';
-    const etf = s.earlyTerminationFee ? 'ETF $' + s.earlyTerminationFee : 'No ETF';
-    const promoBadge = s.introPrice ? '<span style="background:#fef3c7;color:#92400e;padding:1px 5px;border-radius:4px;font-size:0.72em;">INTRO</span> ' : '';
-    const renewBadge = s.renewablePct >= 100 ? '<span style="background:#d1fae5;color:#065f46;padding:1px 5px;border-radius:4px;font-size:0.72em;">\ud83c\udf3f 100%</span> ' : '';
-    
-    rows += '<tr data-ratetype="' + s.rateType + '">' +
-      '<td style="font-weight:600;">' + promoBadge + renewBadge + s.name + '</td>' +
-      '<td style="font-weight:700;color:#1565c0;">' + priceDisplay + savBadge + (mfee ? '<br><span style="font-size:0.8em;color:#6b7280;">' + mfee + '</span>' : '') + '</td>' +
-      '<td>' + (s.rateType === 'fixed' ? '\ud83d\udd12 Fixed' : '\ud83d\udcc8 Variable') + '</td>' +
-      '<td>' + (s.termMonths || '\u2014') + ' mo</td>' +
-      '<td style="font-size:0.82em;color:#6b7280;">' + etf + '</td>' +
-      (s.signUpUrl ? '<td><a href="' + s.signUpUrl + '" target="_blank" rel="noopener" style="color:#1565c0;font-weight:600;font-size:0.85em;">Sign up \u2192</a></td>' : '<td></td>') +
+    const etf = s.earlyTerminationFee || 0;
+    const mfee = s.monthlyFee || 0;
+    const desc = s.offerDetails ? s.offerDetails.substring(0, 90) + (s.offerDetails.length > 90 ? '\u2026' : '') : '';
+    let badges = '';
+    if (s.introPrice) badges += '<span style="background:#fef3c7;color:#92400e;border:1px solid #f59e0b;padding:1px 7px;border-radius:4px;font-size:0.72rem;font-weight:700;margin-right:5px;">' + '\u26a0 Intro rate' + '</span>';
+    if (s.renewablePct >= 100) badges += '<span style="background:#d1fae5;color:#065f46;border:1px solid #6ee7b7;padding:1px 7px;border-radius:4px;font-size:0.72rem;font-weight:700;margin-right:5px;">\ud83c\udf31 100% Renewable</span>';
+    if (s.offerDetails && /bundle|electric.*gas|gas.*electric/i.test(s.offerDetails)) badges += '<span style="background:#fce7f3;color:#9d174d;border:1px solid #f9a8d4;padding:1px 7px;border-radius:4px;font-size:0.72rem;font-weight:700;margin-right:5px;">\u26a0 Requires bundle</span>';
+    return '<tr data-ratetype="' + s.rateType + '">' +
+      '<td style="padding:14px 16px;vertical-align:top;">' +
+        '<strong style="font-size:0.95rem;color:#111;">' + s.name + '</strong>' +
+        (s.phone ? '<br><span style="color:#6b7280;font-size:0.8rem;">' + s.phone + '</span>' : '') +
+        (desc ? '<br><span style="color:#6b7280;font-size:0.78rem;line-height:1.4;">' + desc + '</span>' : '') +
+        (badges ? '<br><span style="display:inline-flex;flex-wrap:wrap;gap:3px;margin-top:4px;">' + badges + '</span>' : '') +
+      '</td>' +
+      '<td style="padding:14px 16px;vertical-align:middle;white-space:nowrap;">' +
+        '<span style="font-size:1.2rem;font-weight:800;color:#111;">' + price + '</span>' +
+        (savings && savings > 0 ? '<span style="background:#d1fae5;color:#065f46;padding:2px 8px;border-radius:4px;font-size:0.78rem;font-weight:700;margin-left:8px;">Save ' + savings + '%</span>' : '') +
+      '</td>' +
+      '<td style="padding:14px 16px;color:#374151;vertical-align:middle;">' + (s.termMonths || '\u2014') + ' mo.</td>' +
+      '<td style="padding:14px 16px;font-weight:700;color:' + (etf > 0 ? '#dc2626' : '#16a34a') + ';vertical-align:middle;">$' + etf + '</td>' +
+      '<td style="padding:14px 16px;font-weight:700;color:' + (mfee > 0 ? '#dc2626' : '#16a34a') + ';vertical-align:middle;">$' + mfee + '</td>' +
+      (s.signUpUrl
+        ? '<td style="padding:14px 16px;vertical-align:middle;"><a href="' + s.signUpUrl + '" target="_blank" rel="noopener" style="background:#1565c0;color:#fff;padding:8px 18px;border-radius:8px;font-size:0.88rem;font-weight:700;text-decoration:none;white-space:nowrap;display:inline-block;">Sign Up \u2192</a></td>'
+        : '<td></td>') +
       '</tr>';
   }
 
+  function sectionDivider(label, color, bg, borderColor) {
+    return '<tr class="section-label-row"><td colspan="6" style="padding:8px 16px 4px;font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;color:' + color + ';background:' + bg + ';border-top:2px solid ' + borderColor + ';">' + label + '</td></tr>';
+  }
+
+  const fixedPlans = suppliers.filter(s => s.rateType === 'fixed');
+  const varPlans   = suppliers.filter(s => s.rateType !== 'fixed');
+  let rows = '';
+  if (fixedPlans.length) {
+    rows += sectionDivider('\ud83d\udd12 Fixed Rate Plans (' + fixedPlans.length + ')', '#1d4ed8', '#f8fbff', '#bfdbfe');
+    fixedPlans.slice(0, 20).forEach(s => { rows += buildRow(s); });
+  }
+  if (varPlans.length) {
+    rows += sectionDivider('\ud83d\udcc8 Variable Rate Plans (' + varPlans.length + ')', '#c2410c', '#fffbf7', '#fed7aa');
+    varPlans.slice(0, 10).forEach(s => { rows += buildRow(s); });
+  }
+
   wrap.innerHTML =
-    '<p style="font-size:0.82rem;color:#6b7280;margin-bottom:8px;">Showing ' + Math.min(suppliers.length, 30) + ' of ' + suppliers.length + ' plans, sorted by rate. Verify all terms directly with the supplier before enrolling.' +
-    (data.isMCFConverted ? ' Prices converted from $/MCF to $/CCF for comparison.' : '') + '</p>' +
-    '<div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;flex-wrap:wrap;">' +
-    '<span style="font-size:0.82rem;color:#6b7280;margin-right:4px;">Filter: </span>' +
-    '<button class="rate-filter-btn active" data-filter="all" onclick="filterRates(\'all\')" style="border:1px solid #d1d5db;border-radius:20px;padding:3px 12px;font-size:0.8rem;cursor:pointer;background:#f3f4f6;font-weight:600;">All</button>' +
-    '<button class="rate-filter-btn" data-filter="fixed" onclick="filterRates(\'fixed\')" style="border:1px solid #bfdbfe;border-radius:20px;padding:3px 12px;font-size:0.8rem;cursor:pointer;background:#eff6ff;color:#1d4ed8;font-weight:600;">&#x1F512; Fixed</button>' +
-    '<button class="rate-filter-btn" data-filter="variable" onclick="filterRates(\'variable\')" style="border:1px solid #fed7aa;border-radius:20px;padding:3px 12px;font-size:0.8rem;cursor:pointer;background:#fff7ed;color:#c2410c;font-weight:600;">&#x1F4C8; Variable</button>' +
+    '<p style="font-size:0.82rem;color:#6b7280;margin-bottom:10px;">Showing plans sorted by rate.' +
+    (data.isMCFConverted ? ' Enbridge prices converted from $/MCF to $/CCF.' : '') +
+    ' Verify all terms directly with the supplier before enrolling.</p>' +
+    '<div style="display:flex;align-items:center;gap:6px;margin-bottom:12px;flex-wrap:wrap;">' +
+    '<span style="font-size:0.82rem;color:#6b7280;margin-right:4px;">Filter:</span>' +
+    '<button class="rate-filter-btn active" data-filter="all" onclick="filterRates(\'all\')" style="border:1px solid #d1d5db;border-radius:20px;padding:4px 13px;font-size:0.8rem;cursor:pointer;background:#f3f4f6;font-weight:600;">All</button>' +
+    '<button class="rate-filter-btn" data-filter="fixed" onclick="filterRates(\'fixed\')" style="border:1px solid #bfdbfe;border-radius:20px;padding:4px 13px;font-size:0.8rem;cursor:pointer;background:#eff6ff;color:#1d4ed8;font-weight:600;">\ud83d\udd12 Fixed</button>' +
+    '<button class="rate-filter-btn" data-filter="variable" onclick="filterRates(\'variable\')" style="border:1px solid #fed7aa;border-radius:20px;padding:4px 13px;font-size:0.8rem;cursor:pointer;background:#fff7ed;color:#c2410c;font-weight:600;">\ud83d\udcc8 Variable</button>' +
     '</div>' +
     '<div style="overflow-x:auto;">' +
-    '<table class="rate-table" style="font-size:0.88rem;">' +
+    '<table class="rate-table">' +
     '<thead><tr>' +
-    '<th style="padding:8px 10px;">Supplier</th>' +
-    '<th style="padding:8px 10px;">Rate</th>' +
-    '<th style="padding:8px 10px;">Type</th>' +
-    '<th style="padding:8px 10px;">Term</th>' +
-    '<th style="padding:8px 10px;">ETF</th>' +
-    '<th style="padding:8px 10px;"></th>' +
+    '<th>Supplier</th>' +
+    '<th>Rate ($/ccf)</th>' +
+    '<th>Term</th>' +
+    '<th>Early Term Fee</th>' +
+    '<th>Monthly Fee</th>' +
+    '<th></th>' +
     '</tr></thead>' +
     '<tbody>' + rows + '</tbody>' +
     '</table></div>' +
