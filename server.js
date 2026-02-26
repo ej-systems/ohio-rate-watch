@@ -246,7 +246,8 @@ const server = http.createServer(async (req, res) => {
         SELECT 
           supplier_name, company_name, price, rate_type, term_months,
           etf, monthly_fee, is_intro, is_promo, offer_details,
-          promo_details, intro_details, sign_up_url, phone, website, offer_id
+          promo_details, intro_details, sign_up_url, phone, website, offer_id,
+          is_renewable, renewable_type
         FROM supplier_offers
         WHERE territory_id = $1 
           AND category = $2 
@@ -270,6 +271,8 @@ const server = http.createServer(async (req, res) => {
           monthlyFee: o.monthly_fee,
           introPrice: o.is_intro === true,
           hasPromo: o.is_promo === true,
+          isRenewable: o.is_renewable === true,
+          renewableType: o.renewable_type,
           offerDetails: o.offer_details,
           promoDetails: o.promo_details,
           introDetails: o.intro_details,
