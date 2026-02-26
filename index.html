@@ -759,11 +759,17 @@ async function renderTerritory(tid) {
   const data = ratesCache[cacheKey];
   const suppliers = (data.suppliers || [])
     .filter(s => s.price && s.price > 0)
-    .sort((a, b) => a.price - b.price);
+    .sort((a, b) => {
+      // Bundle-required plans sort to the bottom within each rate type
+      const aBundle = /bundle|electric.*gas|gas.*electric/i.test((a.offerDetails || '') + ' ' + (a.promoDetails || ''));
+      const bBundle = /bundle|electric.*gas|gas.*electric/i.test((b.offerDetails || '') + ' ' + (b.promoDetails || ''));
+      if (aBundle !== bBundle) return aBundle ? 1 : -1;
+      return a.price - b.price;
+    });
 
   // SCO bar
   if (info.sco) {
-    const bestFixed = suppliers.find(s => s.rateType === 'fixed' && !s.introPrice);
+    const bestFixed = suppliers.find(s => s.rateType === 'fixed' && !s.introPrice && !/bundle|electric.*gas|gas.*electric/i.test((s.offerDetails || '') + ' ' + (s.promoDetails || '')));
     const savings = bestFixed ? Math.round((1 - bestFixed.price / info.sco) * 100) : null;
     scoBar.innerHTML = '<strong>' + info.name + '</strong> default rate: <strong>' + info.scoLabel + '</strong>' +
       (savings ? ' \u2014 best fixed rate is <strong>' + savings + '% less</strong>' : '');
@@ -903,7 +909,10 @@ async function renderTerritory(tid) {
     }
     const billsData = ratesCache[billsCacheKey];
     if (billsData && billsData.cities && billsData.cities.length > 0) {
-      const monthLabel = billsData.reportMonth ? new Date(billsData.reportMonth + '-01').toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : '';
+      const monthLabel = billsData.reportMonth ? (() => {
+        const [y, m] = billsData.reportMonth.split('-');
+        return new Date(+y, +m - 1, 1).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+      })() : '';
       const topCities = billsData.cities.slice(0, 5);
       const cityParts = topCities.map(c => {
         const pct = c.gasPctChange != null ? c.gasPctChange : 0;
