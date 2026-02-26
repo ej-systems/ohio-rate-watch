@@ -822,15 +822,68 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 <script>
 window.addEventListener('load', function() {
+  // Complete county → utility mapping — PUCO + Safe Gas Ohio (Sep 2025)
   const COUNTY_UTILITY = {
+    // Enbridge Gas Ohio — NE Ohio (former Dominion East Ohio)
     'Ashtabula':'enbridge','Lake':'enbridge','Cuyahoga':'enbridge','Geauga':'enbridge',
     'Trumbull':'enbridge','Mahoning':'enbridge','Portage':'enbridge','Summit':'enbridge',
-    'Medina':'enbridge','Wayne':'enbridge','Stark':'enbridge','Carroll':'enbridge',
+    'Medina':'enbridge','Lorain':'enbridge','Stark':'enbridge','Carroll':'enbridge',
     'Columbiana':'enbridge','Jefferson':'enbridge','Harrison':'enbridge',
+    // CenterPoint Energy Ohio — SW Ohio / Dayton metro (former Vectren)
     'Montgomery':'centerpoint','Greene':'centerpoint','Clark':'centerpoint',
     'Miami':'centerpoint','Champaign':'centerpoint','Darke':'centerpoint','Preble':'centerpoint',
-    'Hamilton':'duke','Clermont':'duke','Warren':'duke','Butler':'duke',
-    'Brown':'duke','Clinton':'duke','Highland':'duke'
+    // Duke Energy Ohio — Cincinnati metro (moving to SCO April 2026)
+    'Hamilton':'duke','Butler':'duke','Clermont':'duke','Warren':'duke',
+    'Brown':'duke','Clinton':'duke','Highland':'duke',
+    // Columbia Gas of Ohio — all remaining 59 counties
+    'Adams':'columbia','Allen':'columbia','Ashland':'columbia','Athens':'columbia',
+    'Auglaize':'columbia','Belmont':'columbia','Coshocton':'columbia','Crawford':'columbia',
+    'Defiance':'columbia','Delaware':'columbia','Erie':'columbia','Fairfield':'columbia',
+    'Fayette':'columbia','Franklin':'columbia','Fulton':'columbia','Gallia':'columbia',
+    'Guernsey':'columbia','Hancock':'columbia','Hardin':'columbia','Henry':'columbia',
+    'Hocking':'columbia','Holmes':'columbia','Huron':'columbia','Jackson':'columbia',
+    'Knox':'columbia','Lawrence':'columbia','Licking':'columbia','Logan':'columbia',
+    'Lucas':'columbia','Madison':'columbia','Marion':'columbia','Meigs':'columbia',
+    'Mercer':'columbia','Monroe':'columbia','Morgan':'columbia','Morrow':'columbia',
+    'Muskingum':'columbia','Noble':'columbia','Ottawa':'columbia','Paulding':'columbia',
+    'Perry':'columbia','Pickaway':'columbia','Pike':'columbia','Putnam':'columbia',
+    'Richland':'columbia','Ross':'columbia','Sandusky':'columbia','Scioto':'columbia',
+    'Seneca':'columbia','Shelby':'columbia','Tuscarawas':'columbia','Union':'columbia',
+    'Van Wert':'columbia','Vinton':'columbia','Washington':'columbia','Wayne':'columbia',
+    'Williams':'columbia','Wood':'columbia','Wyandot':'columbia',
+  };
+
+  // Rural gas cooperatives — customers in co-op areas CANNOT use Energy Choice
+  // Source: PUCO Gas Pipeline Safety database (Sep 2025)
+  const COUNTY_COOPS = {
+    'Knox':       ['Knox Energy Cooperative'],
+    'Ashland':    ['Knox Energy Cooperative'],
+    'Morrow':     ['Knox Energy Cooperative'],
+    'Richland':   ['Knox Energy Cooperative'],
+    'Wayne':      ['Knox Energy Cooperative','Consumers Gas Cooperative'],
+    'Holmes':     ['Consumers Gas Cooperative'],
+    'Tuscarawas': ['Consumers Gas Cooperative'],
+    'Medina':     ['Consumers Gas Cooperative'],
+    'Stark':      ['Consumers Gas Cooperative'],
+    'Madison':    ['Madison Energy Cooperative'],
+    'Union':      ['Madison Energy Cooperative'],
+    'Delaware':   ['Madison Energy Cooperative'],
+    'Champaign':  ['Madison Energy Cooperative'],
+    'Fayette':    ['Madison Energy Cooperative'],
+    'Perry':      ['National Gas & Oil Cooperative'],
+    'Hocking':    ['National Gas & Oil Cooperative'],
+    'Morgan':     ['National Gas & Oil Cooperative'],
+    'Vinton':     ['National Gas & Oil Cooperative'],
+    'Noble':      ['National Gas & Oil Cooperative'],
+    'Adams':      ['All American Energy Cooperative'],
+    'Pike':       ['All American Energy Cooperative'],
+    'Scioto':     ['All American Energy Cooperative'],
+    'Geauga':     ['Consumers Gas Cooperative'],
+    'Portage':    ['Consumers Gas Cooperative'],
+    'Logan':      ['Community Energy Resources Cooperative'],
+    'Ashtabula':  ['Village Energy Cooperative'],
+    'Lorain':     ['Village Energy Cooperative'],
+    'Licking':    ['Village Energy Cooperative'],
   };
   const UTILITY_INFO = {
     columbia:    { name:'Columbia Gas of Ohio',    color:'#1565c0', sco:'$1.071/ccf', customers:'~1.4M customers' },
@@ -841,6 +894,9 @@ window.addEventListener('load', function() {
 
   function getUtility(name) {
     return COUNTY_UTILITY[name] || 'columbia';
+  }
+  function getCoops(name) {
+    return COUNTY_COOPS[name] || [];
   }
 
   var map = L.map('ohio-map', {
@@ -880,9 +936,13 @@ window.addEventListener('load', function() {
           var name = feature.properties.NAME;
           var uKey = getUtility(name);
           var info = UTILITY_INFO[uKey];
-          layer.bindTooltip('<strong>' + name + ' County</strong><br>' + info.name + '<br><span style="font-size:0.8em;color:#666;">' + info.customers + '</span>', {
-            sticky: true, className: 'county-tooltip'
-          });
+          var coops = getCoops(name);
+          var coopTip = coops.length ? '<br><span style="font-size:0.75em;color:#b45309;">⚠ Co-op area in county</span>' : '';
+          layer.bindTooltip(
+            '<strong>' + name + ' County</strong><br>' + info.name +
+            '<br><span style="font-size:0.8em;color:#666;">' + info.customers + '</span>' + coopTip,
+            { sticky: true, className: 'county-tooltip' }
+          );
           layer.on('mouseover', function(e) {
             e.target.setStyle(highlightStyle(feature));
             e.target.bringToFront();
@@ -947,6 +1007,13 @@ window.addEventListener('load', function() {
           });
         }
 
+        var localCoops = getCoops(county);
+        var coopBox = localCoops.length
+          ? '<div style="margin-top:8px;padding:8px 10px;background:#fef3c7;border:1px solid #f59e0b;border-radius:6px;font-size:0.8rem;">'
+            + '<strong>⚠ Rural cooperative also serves this county</strong><br>'
+            + localCoops.join(', ') + '. If your bill is from a cooperative, Energy Choice does not apply — you cannot switch suppliers.'
+            + '</div>'
+          : '';
         var rateHtml = uKey === 'duke'
           ? '<span style="color:#6b7280;">GCR rate (moving to SCO April 2026)</span>'
           : 'Current SCO: <strong>' + info.sco + '</strong>';
