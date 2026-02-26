@@ -370,6 +370,12 @@ const server = http.createServer(async (req, res) => {
 
     // Execute the scraper logic
     (async () => {
+      const startTime = Date.now();
+      const errors = [];
+      let pagesScraped = 0, snapshotRows = 0, offersStored = 0;
+      let significantChanges = 0, totalChanges = 0;
+      let dbSnapshots = '?', dbOffers = '?', dbHistory = '?';
+
       try {
         console.log('[cron] Daily check triggered via HTTP');
         const { scrapeAllRates, detectChanges } = await import('./scraper/energy-choice-scraper.js');
@@ -379,6 +385,7 @@ const server = http.createServer(async (req, res) => {
         process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
         const current = await scrapeAllRates();
+        pagesScraped = current.length;
         console.log(`[cron] Scraped ${current.length} rate pages`);
 
         // Save latest to file (ephemeral but useful within container lifecycle)
@@ -388,18 +395,32 @@ const server = http.createServer(async (req, res) => {
 
         // Store to PostgreSQL
         try {
-          const rowCount = await insertSnapshot(current);
-          console.log(`[cron] Stored ${rowCount} snapshot rows`);
+          snapshotRows = await insertSnapshot(current);
+          console.log(`[cron] Stored ${snapshotRows} snapshot rows`);
         } catch (err) {
           console.error('[cron] WARNING: Failed to store snapshots:', err.message);
+          errors.push(`Snapshot insert: ${err.message}`);
         }
 
         try {
           const today = new Date().toISOString().slice(0, 10);
-          const offerCount = await insertSupplierOffers(today, current);
-          console.log(`[cron] Stored ${offerCount} offers for ${today}`);
+          offersStored = await insertSupplierOffers(today, current);
+          console.log(`[cron] Stored ${offersStored} offers for ${today}`);
         } catch (err) {
           console.error('[cron] WARNING: Failed to store offers:', err.message);
+          errors.push(`Offer insert: ${err.message}`);
+        }
+
+        // Get DB row counts
+        try {
+          const r1 = await pool.query('SELECT COUNT(*) as cnt FROM rate_snapshots');
+          const r2 = await pool.query('SELECT COUNT(*) as cnt FROM supplier_offers');
+          const r3 = await pool.query('SELECT COUNT(*) as cnt FROM rate_history');
+          dbSnapshots = Number(r1.rows[0].cnt).toLocaleString();
+          dbOffers = Number(r2.rows[0].cnt).toLocaleString();
+          dbHistory = Number(r3.rows[0].cnt).toLocaleString();
+        } catch (err) {
+          errors.push(`Row count query: ${err.message}`);
         }
 
         // Baseline comparison + email alerts
@@ -407,16 +428,17 @@ const server = http.createServer(async (req, res) => {
         if (fs.existsSync(baselineFile)) {
           const previous = JSON.parse(fs.readFileSync(baselineFile, 'utf8'));
           const allChanges = detectChanges(previous, current);
+          totalChanges = allChanges.length;
           const significant = allChanges.filter(c => {
             if (c.type === 'default_rate') return true;
             const absDiff = Math.abs(c.currRate - c.prevRate);
             const pctDiff = Math.abs(parseFloat(c.changePct));
             return pctDiff >= 5 && absDiff >= 0.01;
           });
-          console.log(`[cron] ${allChanges.length} total changes, ${significant.length} significant`);
+          significantChanges = significant.length;
+          console.log(`[cron] ${totalChanges} total changes, ${significantChanges} significant`);
 
           if (significant.length > 0 && process.env.RESEND_API_KEY) {
-            // Notify owner of changes
             try {
               const top = significant.slice(0, 10).map(c => c.summary).join('<br>');
               await sendEmail(
@@ -427,6 +449,7 @@ const server = http.createServer(async (req, res) => {
               console.log('[cron] Owner notification sent');
             } catch (err) {
               console.error('[cron] Failed to send owner notification:', err.message);
+              errors.push(`Owner email: ${err.message}`);
             }
           }
         } else {
@@ -438,6 +461,53 @@ const server = http.createServer(async (req, res) => {
         console.log('[cron] Daily check complete');
       } catch (err) {
         console.error('[cron] FATAL:', err.message);
+        errors.push(`FATAL: ${err.message}`);
+      }
+
+      // Post summary to Discord webhook
+      const webhookUrl = process.env.DISCORD_WEBHOOK_URL;
+      if (webhookUrl) {
+        const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+        const now = new Date().toLocaleString('en-US', { timeZone: 'America/New_York', dateStyle: 'medium', timeStyle: 'short' });
+        const status = errors.length === 0 ? '✅' : '⚠️';
+
+        const embed = {
+          title: `${status} Daily Scraper Report`,
+          color: errors.length === 0 ? 0x2e7d32 : 0xff9800,
+          fields: [
+            { name: '🕐 Timestamp', value: now, inline: true },
+            { name: '⏱️ Duration', value: `${elapsed}s`, inline: true },
+            { name: '📄 Pages Scraped', value: `${pagesScraped}`, inline: true },
+            { name: '📸 Snapshot Rows Added', value: `${snapshotRows.toLocaleString()}`, inline: true },
+            { name: '📋 Offers Stored', value: `${offersStored.toLocaleString()}`, inline: true },
+            { name: '🔄 Rate Changes', value: `${totalChanges} total, ${significantChanges} significant`, inline: true },
+            { name: '🗃️ DB: rate_snapshots', value: dbSnapshots, inline: true },
+            { name: '🗃️ DB: supplier_offers', value: dbOffers, inline: true },
+            { name: '🗃️ DB: rate_history', value: dbHistory, inline: true },
+          ],
+          footer: { text: 'Ohio Rate Watch · Railway' },
+          timestamp: new Date().toISOString(),
+        };
+
+        if (errors.length > 0) {
+          embed.fields.push({
+            name: '❌ Errors',
+            value: errors.map(e => `• ${e}`).join('\n').slice(0, 1024),
+            inline: false,
+          });
+        }
+
+        try {
+          const whRes = await fetch(webhookUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ embeds: [embed] }),
+          });
+          if (!whRes.ok) console.error('[cron] Discord webhook error:', whRes.status, await whRes.text());
+          else console.log('[cron] Discord webhook sent');
+        } catch (err) {
+          console.error('[cron] Discord webhook failed:', err.message);
+        }
       }
     })();
     return;
