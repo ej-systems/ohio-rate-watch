@@ -44,6 +44,12 @@ if (!fs.existsSync(LOG_FILE)) {
 
 const pool = new pg.Pool({ connectionString: DATABASE_URL });
 
+// Run schema migrations on startup (idempotent)
+pool.query(`
+  ALTER TABLE supplier_offers ADD COLUMN IF NOT EXISTS is_renewable BOOLEAN DEFAULT FALSE;
+  ALTER TABLE supplier_offers ADD COLUMN IF NOT EXISTS renewable_type TEXT;
+`).then(() => console.log('[db] schema migrations ok')).catch(e => console.error('[db] migration error:', e.message));
+
 function allHeaders(headers = {}) {
   return {
     'Access-Control-Allow-Origin': '*',
