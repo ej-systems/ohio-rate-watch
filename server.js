@@ -50,6 +50,24 @@ pool.query(`
   ALTER TABLE supplier_offers ADD COLUMN IF NOT EXISTS renewable_type TEXT;
 `).then(() => console.log('[db] schema migrations ok')).catch(e => console.error('[db] migration error:', e.message));
 
+pool.query(`
+  CREATE TABLE IF NOT EXISTS city_bills (
+    id SERIAL PRIMARY KEY,
+    report_month TEXT NOT NULL,
+    city TEXT NOT NULL,
+    county TEXT,
+    utility_key TEXT NOT NULL,
+    company_name TEXT,
+    gas_bill_total REAL,
+    gas_bill_prior REAL,
+    gas_pct_change REAL,
+    gas_supply_cost REAL,
+    gas_per_mcf REAL,
+    scraped_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(report_month, city, utility_key)
+  );
+`).then(() => console.log('[db] city_bills table ok')).catch(e => console.error('[db] city_bills migration error:', e.message));
+
 function allHeaders(headers = {}) {
   return {
     'Access-Control-Allow-Origin': '*',
@@ -435,6 +453,78 @@ const server = http.createServer(async (req, res) => {
           errors.push(`Offer insert: ${err.message}`);
         }
 
+        // Scrape PUCO city bills
+        let cityBillCount = 0;
+        try {
+          const COMPANY_TO_KEY = {
+            'Columbia Gas of Ohio': 'columbia',
+            'The East Ohio Gas Company dba Enbridge Gas Ohio': 'enbridge',
+            'CenterPoint': 'centerpoint',
+            'Vectren': 'centerpoint',
+            'Duke Energy of Ohio': 'duke',
+          };
+          function mapCompanyToKey(name) {
+            for (const [p, k] of Object.entries(COMPANY_TO_KEY)) {
+              if (name.includes(p)) return k;
+            }
+            return null;
+          }
+          function parseCSVSimple(text) {
+            const lines = text.trim().split('\n');
+            if (lines.length < 2) return [];
+            const headers = lines[0].split(',').map(h => h.trim());
+            return lines.slice(1).filter(Boolean).map(line => {
+              const values = line.split(',').map(v => v.trim());
+              const obj = {};
+              headers.forEach((h, i) => { obj[h] = values[i] || ''; });
+              return obj;
+            });
+          }
+
+          const reportMonth = new Date().toISOString().slice(0, 7);
+          const billRes = await fetch('https://analytics.das.ohio.gov/t/PUCPUB/views/UtilityRateSurvey/BillbyCity.csv');
+          if (!billRes.ok) throw new Error(`BillbyCity: ${billRes.status}`);
+          const billRows = parseCSVSimple(await billRes.text()).filter(r => r['Utility Type'] === 'Gas');
+
+          const unitRes = await fetch('https://analytics.das.ohio.gov/t/PUCPUB/views/UtilityRateSurvey/UnitCost.csv');
+          let unitCostMap = {};
+          if (unitRes.ok) {
+            for (const row of parseCSVSimple(await unitRes.text())) {
+              if ((row['Unit Cost Header'] || '').includes('Gas Cost')) {
+                const co = row['Company Name'] || '';
+                const pu = parseFloat((row['Per Unit of Usage'] || '').replace(/[$,]/g, ''));
+                if (co && !isNaN(pu)) unitCostMap[co] = { perMcf: pu, supplyCost: pu * 10 };
+              }
+            }
+          }
+
+          for (const row of billRows) {
+            const city = row['City'], company = row['Company Name'], county = row['County'];
+            const uk = mapCompanyToKey(company || '');
+            if (!uk || !city) continue;
+            const tc = parseFloat((row['Total_Current'] || '').replace(/[$,]/g, ''));
+            const tp = parseFloat((row['Total_Prior'] || '').replace(/[$,]/g, ''));
+            const pc = parseFloat((row['% Change Total'] || '').replace(/[%,]/g, ''));
+            const ud = unitCostMap[company] || {};
+            await pool.query(`
+              INSERT INTO city_bills (report_month, city, county, utility_key, company_name, gas_bill_total, gas_bill_prior, gas_pct_change, gas_supply_cost, gas_per_mcf)
+              VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+              ON CONFLICT (report_month, city, utility_key) DO UPDATE SET
+                county=EXCLUDED.county, company_name=EXCLUDED.company_name,
+                gas_bill_total=EXCLUDED.gas_bill_total, gas_bill_prior=EXCLUDED.gas_bill_prior,
+                gas_pct_change=EXCLUDED.gas_pct_change, gas_supply_cost=EXCLUDED.gas_supply_cost,
+                gas_per_mcf=EXCLUDED.gas_per_mcf, scraped_at=NOW()
+            `, [reportMonth, city, county, uk, company,
+                isNaN(tc)?null:tc, isNaN(tp)?null:tp, isNaN(pc)?null:pc,
+                ud.supplyCost||null, ud.perMcf||null]);
+            cityBillCount++;
+          }
+          console.log(`[cron] Upserted ${cityBillCount} city bill rows`);
+        } catch (err) {
+          console.error('[cron] City bills scraper error:', err.message);
+          errors.push(`City bills: ${err.message}`);
+        }
+
         // Get DB row counts
         try {
           const r1 = await pool.query('SELECT COUNT(*) as cnt FROM rate_snapshots');
@@ -504,6 +594,7 @@ const server = http.createServer(async (req, res) => {
             { name: '📄 Pages Scraped', value: `${pagesScraped}`, inline: true },
             { name: '📸 Snapshot Rows Added', value: `${snapshotRows.toLocaleString()}`, inline: true },
             { name: '📋 Offers Stored', value: `${offersStored.toLocaleString()}`, inline: true },
+            { name: '🏘️ City Bills', value: `${cityBillCount}`, inline: true },
             { name: '🔄 Rate Changes', value: `${totalChanges} total, ${significantChanges} significant`, inline: true },
             { name: '🗃️ DB: rate_snapshots', value: dbSnapshots, inline: true },
             { name: '🗃️ DB: supplier_offers', value: dbOffers, inline: true },
@@ -534,6 +625,56 @@ const server = http.createServer(async (req, res) => {
         }
       }
     })();
+    return;
+  }
+
+  // ---- City Bills API ----
+  if (req.method === 'GET' && url.pathname === '/api/city-bills') {
+    try {
+      const TERRITORY_TO_KEY = { '8': 'columbia', '1': 'enbridge', '11': 'centerpoint', '10': 'duke' };
+      const KEY_TO_KEY = { columbia: 'columbia', enbridge: 'enbridge', centerpoint: 'centerpoint', duke: 'duke' };
+      let utilityKey = null;
+      const tParam = url.searchParams.get('territory');
+      if (tParam) {
+        utilityKey = TERRITORY_TO_KEY[tParam] || KEY_TO_KEY[tParam] || tParam;
+      }
+
+      let query, params;
+      if (utilityKey) {
+        query = `SELECT report_month, city, county, utility_key, gas_bill_total, gas_bill_prior, gas_pct_change, gas_supply_cost, gas_per_mcf
+                 FROM city_bills WHERE utility_key = $1
+                 AND report_month = (SELECT MAX(report_month) FROM city_bills WHERE utility_key = $1)
+                 ORDER BY gas_bill_total DESC`;
+        params = [utilityKey];
+      } else {
+        query = `SELECT report_month, city, county, utility_key, gas_bill_total, gas_bill_prior, gas_pct_change, gas_supply_cost, gas_per_mcf
+                 FROM city_bills
+                 WHERE report_month = (SELECT MAX(report_month) FROM city_bills)
+                 ORDER BY utility_key, gas_bill_total DESC`;
+        params = [];
+      }
+
+      const { rows } = await pool.query(query, params);
+      const reportMonth = rows.length > 0 ? rows[0].report_month : null;
+      res.writeHead(200, allHeaders({ 'Cache-Control': 'public, max-age=3600' }));
+      res.end(JSON.stringify({
+        reportMonth,
+        utility: utilityKey || 'all',
+        cities: rows.map(r => ({
+          city: r.city,
+          county: r.county,
+          gasBillTotal: r.gas_bill_total,
+          gasBillPrior: r.gas_bill_prior,
+          gasPctChange: r.gas_pct_change,
+          gasSupplyCost: r.gas_supply_cost,
+          gasPerMcf: r.gas_per_mcf,
+        })),
+      }));
+    } catch (err) {
+      console.error('[api/city-bills] error:', err.message);
+      res.writeHead(500, allHeaders());
+      res.end(JSON.stringify({ error: err.message }));
+    }
     return;
   }
 

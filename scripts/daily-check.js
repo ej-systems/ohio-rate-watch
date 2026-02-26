@@ -34,6 +34,162 @@ const DRY_RUN     = process.argv.includes('--dry-run');
 const log = (...args) => console.error(`[${new Date().toISOString()}]`, ...args);
 
 // ---------------------------------------------------------------------------
+// PUCO City Bills Scraper
+// ---------------------------------------------------------------------------
+const COMPANY_TO_KEY = {
+  'Columbia Gas of Ohio': 'columbia',
+  'The East Ohio Gas Company dba Enbridge Gas Ohio': 'enbridge',
+  'CenterPoint': 'centerpoint',
+  'Vectren': 'centerpoint',
+  'Duke Energy of Ohio': 'duke',
+};
+
+function mapCompanyToKey(companyName) {
+  for (const [pattern, key] of Object.entries(COMPANY_TO_KEY)) {
+    if (companyName.includes(pattern)) return key;
+  }
+  return null;
+}
+
+function parseCSV(text) {
+  const lines = text.trim().split('\n');
+  if (lines.length < 2) return [];
+  const headers = lines[0].split(',').map(h => h.trim());
+  return lines.slice(1).filter(Boolean).map(line => {
+    // Simple CSV parse (handles basic cases, no quoted commas expected in this data)
+    const values = line.split(',').map(v => v.trim());
+    const obj = {};
+    headers.forEach((h, i) => { obj[h] = values[i] || ''; });
+    return obj;
+  });
+}
+
+async function scrapeCityBills() {
+  const { default: pg } = await import('pg');
+  const { readFileSync, existsSync } = await import('fs');
+  
+  let DATABASE_URL = process.env.DATABASE_URL;
+  if (!DATABASE_URL) {
+    const envPath = path.join(ROOT, '.env');
+    if (existsSync(envPath)) {
+      const envFile = readFileSync(envPath, 'utf8');
+      DATABASE_URL = envFile.match(/DATABASE_URL=(.*)/)?.[1]?.trim();
+    }
+  }
+  if (!DATABASE_URL) {
+    log('WARNING: No DATABASE_URL for city bills scraper');
+    return 0;
+  }
+
+  const pool = new pg.Pool({ connectionString: DATABASE_URL });
+
+  try {
+    // Ensure table exists
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS city_bills (
+        id SERIAL PRIMARY KEY,
+        report_month TEXT NOT NULL,
+        city TEXT NOT NULL,
+        county TEXT,
+        utility_key TEXT NOT NULL,
+        company_name TEXT,
+        gas_bill_total REAL,
+        gas_bill_prior REAL,
+        gas_pct_change REAL,
+        gas_supply_cost REAL,
+        gas_per_mcf REAL,
+        scraped_at TIMESTAMPTZ DEFAULT NOW(),
+        UNIQUE(report_month, city, utility_key)
+      );
+    `);
+
+    const reportMonth = new Date().toISOString().slice(0, 7); // YYYY-MM
+
+    // Fetch BillbyCity CSV
+    log('Fetching PUCO BillbyCity CSV...');
+    const billRes = await fetch('https://analytics.das.ohio.gov/t/PUCPUB/views/UtilityRateSurvey/BillbyCity.csv');
+    if (!billRes.ok) throw new Error(`BillbyCity fetch failed: ${billRes.status}`);
+    const billText = await billRes.text();
+    const billRows = parseCSV(billText);
+    log(`Parsed ${billRows.length} BillbyCity rows`);
+
+    // Filter to Gas rows and map
+    const gasRows = billRows.filter(r => r['Utility Type'] === 'Gas');
+    log(`Found ${gasRows.length} Gas rows`);
+
+    // Fetch UnitCost CSV
+    log('Fetching PUCO UnitCost CSV...');
+    const unitRes = await fetch('https://analytics.das.ohio.gov/t/PUCPUB/views/UtilityRateSurvey/UnitCost.csv');
+    let unitCostMap = {}; // companyName -> { supplyCost, perMcf }
+    if (unitRes.ok) {
+      const unitText = await unitRes.text();
+      const unitRows = parseCSV(unitText);
+      log(`Parsed ${unitRows.length} UnitCost rows`);
+      
+      // Look for Gas Cost rows
+      for (const row of unitRows) {
+        const header = row['Unit Cost Header'] || '';
+        if (header.includes('Gas Cost')) {
+          const company = row['Company Name'] || '';
+          const perUnit = parseFloat((row['Per Unit of Usage'] || '').replace(/[$,]/g, ''));
+          if (company && !isNaN(perUnit)) {
+            unitCostMap[company] = {
+              perMcf: perUnit,
+              supplyCost: perUnit * 10, // 10 Mcf monthly usage
+            };
+          }
+        }
+      }
+      log(`Unit cost data for ${Object.keys(unitCostMap).length} companies`);
+    } else {
+      log('WARNING: UnitCost fetch failed, continuing without unit costs');
+    }
+
+    // Upsert into city_bills
+    let upserted = 0;
+    for (const row of gasRows) {
+      const city = row['City'] || '';
+      const company = row['Company Name'] || '';
+      const county = row['County'] || '';
+      const utilityKey = mapCompanyToKey(company);
+      if (!utilityKey || !city) continue;
+
+      const totalCurrent = parseFloat((row['Total_Current'] || '').replace(/[$,]/g, ''));
+      const totalPrior = parseFloat((row['Total_Prior'] || '').replace(/[$,]/g, ''));
+      const pctChange = parseFloat((row['% Change Total'] || '').replace(/[%,]/g, ''));
+      const unitData = unitCostMap[company] || {};
+
+      await pool.query(`
+        INSERT INTO city_bills (report_month, city, county, utility_key, company_name, gas_bill_total, gas_bill_prior, gas_pct_change, gas_supply_cost, gas_per_mcf)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+        ON CONFLICT (report_month, city, utility_key) DO UPDATE SET
+          county = EXCLUDED.county,
+          company_name = EXCLUDED.company_name,
+          gas_bill_total = EXCLUDED.gas_bill_total,
+          gas_bill_prior = EXCLUDED.gas_bill_prior,
+          gas_pct_change = EXCLUDED.gas_pct_change,
+          gas_supply_cost = EXCLUDED.gas_supply_cost,
+          gas_per_mcf = EXCLUDED.gas_per_mcf,
+          scraped_at = NOW()
+      `, [
+        reportMonth, city, county, utilityKey, company,
+        isNaN(totalCurrent) ? null : totalCurrent,
+        isNaN(totalPrior) ? null : totalPrior,
+        isNaN(pctChange) ? null : pctChange,
+        unitData.supplyCost || null,
+        unitData.perMcf || null,
+      ]);
+      upserted++;
+    }
+
+    log(`Upserted ${upserted} city bill rows for ${reportMonth}`);
+    return upserted;
+  } finally {
+    await pool.end();
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Load subscribers from CSV
 // ---------------------------------------------------------------------------
 function loadSubscribers() {
@@ -272,6 +428,14 @@ async function main() {
   }
 
   log(`Alert run complete: ${sent} sent, ${failed} failed`);
+
+  // Scrape PUCO city bills
+  try {
+    const cityBillCount = await scrapeCityBills();
+    log(`City bills scraper: ${cityBillCount} rows upserted`);
+  } catch (err) {
+    log('WARNING: City bills scraper failed:', err.message);
+  }
 
   // Also notify owner
   try {
