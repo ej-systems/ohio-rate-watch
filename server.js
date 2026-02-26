@@ -279,6 +279,29 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  if (req.method === 'GET' && url.pathname === '/api/stats') {
+    try {
+      const today = new Date().toISOString().slice(0, 10);
+      const { rows } = await pool.query(
+        `SELECT COUNT(*) as total_offers,
+                COUNT(DISTINCT supplier_name) as unique_suppliers,
+                MAX(price) as max_price,
+                MIN(price) FILTER (WHERE price > 0) as min_price
+         FROM supplier_offers WHERE scraped_date = $1`, [today]);
+      const r = rows[0];
+      res.writeHead(200, allHeaders());
+      res.end(JSON.stringify({
+        totalOffers: Number(r.total_offers),
+        uniqueSuppliers: Number(r.unique_suppliers),
+        scrapedDate: today,
+      }));
+    } catch (err) {
+      res.writeHead(500, allHeaders());
+      res.end(JSON.stringify({ error: err.message }));
+    }
+    return;
+  }
+
   if (req.method === 'GET' && url.pathname === '/api/rates') {
     const territory = parseInt(url.searchParams.get('territory') || '8');
     const category = url.searchParams.get('category') || 'NaturalGas';

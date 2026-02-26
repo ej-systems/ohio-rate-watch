@@ -232,9 +232,9 @@
 
 <!-- STATS -->
 <div class="stats">
-  <div class="stat"><div class="stat-num">254</div><div class="stat-label">Supplier Offers Tracked</div></div>
+  <div class="stat"><div class="stat-num" id="stat-offers">—</div><div class="stat-label">Supplier Offers Tracked</div></div>
   <div class="stat"><div class="stat-num">4</div><div class="stat-label">Ohio Gas Territories</div></div>
-  <div class="stat"><div class="stat-num">54%</div><div class="stat-label">Max Fixed Rate Savings</div></div>
+  <div class="stat"><div class="stat-num" id="stat-savings">—</div><div class="stat-label">Max Fixed Rate Savings</div></div>
   <div class="stat"><div class="stat-num">Daily</div><div class="stat-label">Rate Updates</div></div>
 </div>
 
@@ -961,7 +961,33 @@ window.expandSection = function(section) {
     if (countEl) countEl.textContent = visible;
   };
 
-document.addEventListener('DOMContentLoaded', function() { renderTerritory(8); });
+document.addEventListener('DOMContentLoaded', function() {
+  renderTerritory(8);
+
+  // Populate live stats
+  fetch('/api/stats')
+    .then(r => r.json())
+    .then(d => {
+      const totalEl = document.getElementById('stat-offers');
+      if (totalEl && d.totalOffers) totalEl.textContent = d.totalOffers.toLocaleString();
+    }).catch(() => {});
+
+  // Best savings stat — fetch Columbia Gas (largest territory) and find best non-bundle fixed rate
+  fetch('/api/rates?territory=8&category=NaturalGas&rateCode=1')
+    .then(r => r.json())
+    .then(d => {
+      const savingsEl = document.getElementById('stat-savings');
+      const sco = 1.071; // Columbia Gas SCO
+      const best = (d.suppliers || []).find(s =>
+        s.rateType === 'fixed' && s.price > 0 &&
+        !/bundle|electric.*gas|gas.*electric/i.test((s.offerDetails || '') + ' ' + (s.promoDetails || ''))
+      );
+      if (savingsEl && best && best.price) {
+        const pct = Math.round((1 - best.price / sco) * 100);
+        savingsEl.textContent = pct + '%';
+      }
+    }).catch(() => {});
+});
 </script>
 
 </body>
