@@ -5,13 +5,16 @@
     "watchPatterns": [
       "server.js",
       "package.json",
-      "src/**"
+      "src/**",
+      "scraper/**",
+      "lib/**",
+      "zip-territory.json"
     ]
   },
   "deploy": {
     "numReplicas": 1,
     "startCommand": "node server.js",
-    "healthcheckPath": "/",
+    "healthcheckPath": "/api/health",
     "healthcheckTimeout": 100,
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 5
