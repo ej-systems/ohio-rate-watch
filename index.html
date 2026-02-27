@@ -268,7 +268,9 @@
 
 <!-- COMPACT SAVINGS CALCULATOR -->
 <div style="background:#eff6ff;border-top:1px solid #bfdbfe;border-bottom:1px solid #bfdbfe;padding:10px 24px;font-size:0.82rem;color:#1e40af;line-height:1.5;">
-  💡 <strong>Timing tip:</strong> Supplier switches take 1–2 billing cycles. For gas, the best time to lock in is September–October — before winter bills hit. <a href="/learn#when-to-switch" style="color:#1565c0;font-weight:600;">Learn more →</a>
+  <div style="max-width:880px;margin:0 auto;">
+    💡 <strong>Timing tip:</strong> Supplier switches take 1–2 billing cycles. For gas, the best time to lock in is September–October — before winter bills hit. <a href="/learn#when-to-switch" style="color:#1565c0;font-weight:600;">Learn more →</a>
+  </div>
 </div>
 <section id="calculator" style="background:#f8f9fa;border-top:1px solid #e5e7eb;border-bottom:1px solid #e5e7eb;padding:40px 24px;">
   <div style="max-width:880px;margin:0 auto;">
@@ -278,14 +280,16 @@
     <div id="calc-inputs" style="display:flex;gap:20px;flex-wrap:wrap;margin-bottom:24px;">
 
       <!-- Territory -->
-      <div style="flex:1;min-width:180px;">
+      <div style="flex:1;min-width:180px;display:flex;flex-direction:column;">
         <label for="calc-territory" style="display:block;font-size:0.8rem;font-weight:600;color:#374151;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.4px;">Territory</label>
+        <div style="flex:1;"></div>
         <select id="calc-territory" style="width:100%;padding:9px 12px;border:1.5px solid #d1d5db;border-radius:8px;font-size:0.93rem;background:#fff;color:#111;cursor:pointer;">
           <option value="8">Columbia Gas (default)</option>
           <option value="1">Enbridge Gas Ohio</option>
           <option value="11">CenterPoint Energy</option>
           <option value="10">Duke Energy Ohio</option>
         </select>
+        <div style="height:28px;"></div><!-- spacer matching slider height -->
       </div>
 
       <!-- Current Rate -->
