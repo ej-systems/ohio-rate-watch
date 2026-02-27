@@ -3,5 +3,6 @@ node_modules/
 *.local
 dist/
 data/*.json
+!data/aggregation-programs.json
 scraper/node_modules/
 data/rates-*.json

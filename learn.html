@@ -161,6 +161,7 @@
       <a href="#history-chart">Historical Rate Chart</a>
       <a href="#price-spikes">What Happened in 2022</a>
       <a href="#aggregation">Government Aggregation</a>
+      <a href="#aggregation-programs">Active Aggregation Programs</a>
       <a href="#rights">Your Rights as a Shopper</a>
       <a href="#how-to-switch">Steps to Switch</a>
       <a href="#glossary">Glossary</a>
@@ -397,6 +398,71 @@
     <strong>Already in an aggregation program?</strong>
     You may already have a better rate than the default SCO. Check your bill — if you see a supplier name other than your utility, you're either in an aggregation program or have previously chosen a supplier. You can still opt out and shop individually if you find a better deal.
   </div>
+
+  <!-- AGGREGATION PROGRAMS DIRECTORY -->
+  <div style="margin-top:40px;" id="aggregation-programs">
+    <h3 style="font-size:1.25rem;font-weight:800;margin-bottom:8px;color:#1a1a2e;">Active Government & Municipal Aggregation Programs</h3>
+    <p>Below are known active aggregation programs across Ohio. These bulk-rate programs are negotiated by municipalities, counties, or nonprofit councils on behalf of residents — and they <strong>don't appear on PUCO's Apples to Apples site</strong>.</p>
+
+    <div class="info-box yellow">
+      <strong>⚠ Eligibility varies by municipality</strong>
+      These programs are only available to residents of participating communities. You must live within the program's service area to be eligible. PIPP Plus participants are not eligible for government aggregation. Check your bill or contact your local government to confirm.
+    </div>
+
+    <div id="agg-programs-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;margin:24px 0;">
+      <!-- Populated by JS below -->
+    </div>
+
+    <div style="padding:14px 18px;background:#f8f9fa;border-radius:10px;font-size:0.83rem;color:#555;line-height:1.6;border-left:3px solid #d1d5db;margin-top:16px;">
+      <strong>About this data:</strong> Rate data for aggregation programs is not always publicly available. We list programs for awareness — <strong>always verify current rates directly</strong> with the program or your local government. Rates change with each contract cycle (typically every 1–2 years). Last updated: February 2026.
+    </div>
+  </div>
+
+  <script>
+  (function() {
+    fetch('/data/aggregation-programs.json')
+      .then(r => r.json())
+      .then(programs => {
+        const grid = document.getElementById('agg-programs-grid');
+        if (!grid) return;
+        programs.forEach(p => {
+          const rateDisplay = p.rate
+            ? ('$' + (p.rateUnit === 'mcf' ? (p.rate / 10).toFixed(3) : p.rate.toFixed(4)) + '/ccf')
+            : null;
+          const rateHtml = rateDisplay
+            ? '<span style="font-size:1.1rem;font-weight:800;color:#16a34a;">' + rateDisplay + '</span>'
+            : '<span style="font-size:0.85rem;font-weight:600;color:#9ca3af;">Contact for rate</span>';
+          const badge = p.optOut
+            ? '<span style="background:#dbeafe;color:#1e40af;font-size:0.7rem;padding:2px 8px;border-radius:10px;font-weight:700;">OPT-OUT</span>'
+            : '<span style="background:#fef3c7;color:#92400e;font-size:0.7rem;padding:2px 8px;border-radius:10px;font-weight:700;">OPT-IN</span>';
+          const territoryNames = (p.territory || []).map(t => {
+            return { enbridge:'Enbridge', columbia:'Columbia Gas', duke:'Duke Energy', centerpoint:'CenterPoint' }[t] || t;
+          }).join(', ');
+          const card = document.createElement('div');
+          card.style.cssText = 'background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:18px 20px;display:flex;flex-direction:column;gap:8px;';
+          card.innerHTML =
+            '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">' +
+              '<h4 style="font-size:0.95rem;font-weight:800;color:#1a1a2e;margin:0;">' + p.name + '</h4>' +
+              badge +
+            '</div>' +
+            '<div style="font-size:0.78rem;color:#6b7280;line-height:1.4;">' + p.coverage + '</div>' +
+            '<div style="font-size:0.78rem;color:#6b7280;">Territory: ' + territoryNames + '</div>' +
+            '<div style="margin:4px 0;">' + rateHtml + '</div>' +
+            (p.rateNote ? '<div style="font-size:0.75rem;color:#9ca3af;line-height:1.4;">' + p.rateNote.replace(/</g,'&lt;') + '</div>' : '') +
+            (p.supplier ? '<div style="font-size:0.75rem;color:#6b7280;">Supplier: ' + p.supplier + '</div>' : '') +
+            '<div style="margin-top:auto;padding-top:8px;display:flex;gap:10px;flex-wrap:wrap;">' +
+              (p.url ? '<a href="' + p.url + '" target="_blank" rel="noopener" style="font-size:0.82rem;color:#1565c0;font-weight:600;text-decoration:none;">Learn more →</a>' : '') +
+              (p.enrollUrl ? '<a href="' + p.enrollUrl + '" target="_blank" rel="noopener" style="font-size:0.82rem;color:#16a34a;font-weight:600;text-decoration:none;">Enroll →</a>' : '') +
+              (p.phone ? '<a href="tel:' + p.phone.replace(/[^0-9]/g,'') + '" style="font-size:0.82rem;color:#6b7280;text-decoration:none;">☎ ' + p.phone + '</a>' : '') +
+            '</div>';
+          grid.appendChild(card);
+        });
+      })
+      .catch(err => {
+        console.error('Failed to load aggregation programs:', err);
+      });
+  })();
+  </script>
 </div>
 
 <hr class="section-divider">
