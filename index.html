@@ -289,7 +289,7 @@
       </div>
 
       <!-- Current Rate -->
-      <div style="flex:1;min-width:180px;">
+      <div style="flex:1;min-width:180px;display:flex;flex-direction:column;">
         <label for="calc-rate-num" style="display:block;font-size:0.8rem;font-weight:600;color:#374151;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.4px;">Your rate (<span id="calc-rate-unit-label">$/ccf</span>) <span class="unit-toggle-pill" style="text-transform:none;"><button data-unit-toggle="ccf" onclick="setUnit('ccf')" class="utp-btn active">CCF</button><span class="utp-sep">|</span><button data-unit-toggle="mcf" onclick="setUnit('mcf')" class="utp-btn">MCF</button></span></label>
         <input type="number" id="calc-rate-num" min="0.40" max="1.50" step="0.01" value="0.85"
           style="width:100%;padding:9px 12px;border:1.5px solid #d1d5db;border-radius:8px;font-size:0.93rem;color:#111;box-sizing:border-box;">
@@ -298,8 +298,9 @@
       </div>
 
       <!-- Monthly Usage -->
-      <div style="flex:1;min-width:180px;">
+      <div style="flex:1;min-width:180px;display:flex;flex-direction:column;">
         <label for="calc-usage-num" style="display:block;font-size:0.8rem;font-weight:600;color:#374151;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.4px;">Usage (ccf/mo)</label>
+        <div style="flex:1;"></div>
         <input type="number" id="calc-usage-num" min="10" max="200" step="5" value="50"
           style="width:100%;padding:9px 12px;border:1.5px solid #d1d5db;border-radius:8px;font-size:0.93rem;color:#111;box-sizing:border-box;">
         <input type="range" id="calc-usage-slider" min="10" max="200" step="5" value="50"
