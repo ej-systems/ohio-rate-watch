@@ -13,8 +13,13 @@
  */
 
 import { XMLParser } from 'fast-xml-parser';
+import { Agent } from 'undici';
 
 const BASE_URL = 'https://www.energychoice.ohio.gov';
+
+// Scoped TLS bypass: energychoice.ohio.gov uses a cert not in Node's built-in CA store.
+// Use a custom agent only for requests to that host instead of disabling TLS globally.
+const pucoAgent = new Agent({ connect: { rejectUnauthorized: false } });
 
 const GAS_TERRITORIES = [
   { id: 1, name: 'Columbia Gas of Ohio (East)' },
@@ -56,7 +61,7 @@ async function fetchRatePage(category, territoryId, rateCode) {
   const pageUrl = `${BASE_URL}/ApplesToApplesComparision.aspx?Category=${category}&TerritoryId=${territoryId}&RateCode=${rateCode}`;
 
   // Step 1: GET the page to obtain ASP.NET state tokens + cookies
-  const r1 = await fetch(pageUrl, { headers: HEADERS });
+  const r1 = await fetch(pageUrl, { headers: HEADERS, dispatcher: pucoAgent });
   if (!r1.ok) throw new Error(`HTTP ${r1.status} for ${pageUrl}`);
   const cookie = r1.headers.get('set-cookie') || '';
   const html = await r1.text();
@@ -116,6 +121,7 @@ async function fetchRatePage(category, territoryId, rateCode) {
       'Referer': pageUrl,
     },
     body: body.toString(),
+    dispatcher: pucoAgent,
   });
 
   if (!r2.ok) throw new Error(`XML export HTTP ${r2.status} for ${pageUrl}`);
@@ -211,7 +217,7 @@ async function fetchRatePage(category, territoryId, rateCode) {
  */
 async function discoverElectricTerritories() {
   const url = `${BASE_URL}/ApplesToApplesCategory.aspx?Category=Electric`;
-  const res = await fetch(url, { headers: HEADERS });
+  const res = await fetch(url, { headers: HEADERS, dispatcher: pucoAgent });
   const html = await res.text();
 
   const ids = new Set();

@@ -595,7 +595,10 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'POST' && url.pathname === '/api/cron/daily-check') {
     const cronSecret = process.env.CRON_SECRET;
     const authHeader = req.headers['x-cron-secret'] || '';
-    if (!cronSecret || authHeader !== cronSecret) {
+    const secretValid = cronSecret &&
+      authHeader.length === cronSecret.length &&
+      crypto.timingSafeEqual(Buffer.from(authHeader), Buffer.from(cronSecret));
+    if (!secretValid) {
       res.writeHead(401, allHeaders());
       res.end(JSON.stringify({ error: 'Unauthorized' }));
       return;
@@ -617,9 +620,6 @@ const server = http.createServer(async (req, res) => {
         console.log('[cron] Daily check triggered via HTTP');
         const { scrapeAllRates, detectChanges } = await import('./scraper/energy-choice-scraper.js');
         const { insertSnapshot, insertSupplierOffers } = await import('./lib/history-store.js');
-
-        // Bypass cert issues
-        process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
         const current = await scrapeAllRates();
         pagesScraped = current.length;
