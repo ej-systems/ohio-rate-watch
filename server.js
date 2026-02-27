@@ -18,7 +18,9 @@ const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const PORT = process.env.PORT || 3001;
 const LOG_FILE = '/var/log/ratewatch/signups.csv';
 
-// Load DATABASE_URL from .env if not in environment
+// Load DATABASE_URL from .env if not in environment.
+// In production (Railway), DATABASE_URL is set via env vars — .env is never deployed.
+// This fallback is for local development only. .env is listed in .gitignore.
 let DATABASE_URL = process.env.DATABASE_URL;
 if (!DATABASE_URL) {
   const envPath = path.join(__dirname, '.env');
