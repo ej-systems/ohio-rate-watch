@@ -276,10 +276,13 @@
     </div>
 
     <div style="padding:40px 0;">
-      <h2 style="font-size:1.4rem;font-weight:800;color:#111;margin:0 0 6px;">How Much Could You Save?</h2>
+      <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:6px;">
+        <h2 style="font-size:1.4rem;font-weight:800;color:#111;margin:0;">How Much Could You Save?</h2>
+        <span class="unit-toggle-pill"><button data-unit-toggle="ccf" onclick="setUnit('ccf')" class="utp-btn active">CCF</button><span class="utp-sep">|</span><button data-unit-toggle="mcf" onclick="setUnit('mcf')" class="utp-btn">MCF</button></span>
+      </div>
       <p style="color:#6b7280;font-size:0.93rem;margin:0 0 24px;">Enter your rate and usage — see your savings instantly.</p>
 
-      <div id="calc-inputs" style="display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-bottom:24px;">
+      <div id="calc-inputs" style="display:grid;grid-template-columns:repeat(3,1fr);gap:20px;align-items:end;margin-bottom:24px;">
 
         <!-- Territory -->
         <div>
@@ -294,7 +297,7 @@
 
         <!-- Current Rate -->
         <div>
-          <label for="calc-rate-num" style="display:block;font-size:0.8rem;font-weight:600;color:#374151;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.4px;">Your rate (<span id="calc-rate-unit-label">$/ccf</span>) <span class="unit-toggle-pill" style="text-transform:none;"><button data-unit-toggle="ccf" onclick="setUnit('ccf')" class="utp-btn active">CCF</button><span class="utp-sep">|</span><button data-unit-toggle="mcf" onclick="setUnit('mcf')" class="utp-btn">MCF</button></span></label>
+          <label for="calc-rate-num" style="display:block;font-size:0.8rem;font-weight:600;color:#374151;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.4px;">Your rate (<span id="calc-rate-unit-label">$/ccf</span>)</label>
           <input type="number" id="calc-rate-num" min="0.40" max="1.50" step="0.01" value="0.85"
             style="width:100%;padding:9px 12px;border:1.5px solid #d1d5db;border-radius:8px;font-size:0.93rem;color:#111;box-sizing:border-box;height:42px;">
           <input type="range" id="calc-rate-slider" min="0.40" max="1.50" step="0.01" value="0.85"
@@ -303,7 +306,7 @@
 
         <!-- Monthly Usage -->
         <div>
-          <label for="calc-usage-num" style="display:block;font-size:0.8rem;font-weight:600;color:#374151;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.4px;">Usage (ccf/mo)</label>
+          <label for="calc-usage-num" style="display:block;font-size:0.8rem;font-weight:600;color:#374151;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.4px;">Usage (<span id="calc-usage-unit-label">ccf</span>/mo)</label>
           <input type="number" id="calc-usage-num" min="10" max="200" step="5" value="50"
             style="width:100%;padding:9px 12px;border:1.5px solid #d1d5db;border-radius:8px;font-size:0.93rem;color:#111;box-sizing:border-box;height:42px;">
           <input type="range" id="calc-usage-slider" min="10" max="200" step="5" value="50"
