@@ -3,12 +3,10 @@
   "build": {
     "builder": "RAILPACK",
     "watchPatterns": [
-      "server.js",
-      "package.json",
-      "src/**",
-      "scraper/**",
-      "lib/**",
-      "zip-territory.json"
+      "**/*.js",
+      "**/*.html",
+      "**/*.json",
+      "package.json"
     ]
   },
   "deploy": {
