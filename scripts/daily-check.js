@@ -12,9 +12,6 @@
  * --dry-run      : Show what would be sent without sending emails
  */
 
-// Bypass energychoice.ohio.gov cert not in Node.js built-in CA store
-process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
-
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
