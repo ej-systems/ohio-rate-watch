@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ohio Natural Gas Savings Calculator | Ohio Rate Watch</title>
+<meta name="description" content="Calculate how much you could save by switching natural gas suppliers in Ohio. Enter your current rate and usage to compare live offers.">
+<link rel="canonical" href="https://ohioratewatch.com/calculator">
+<!-- Open Graph -->
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://ohioratewatch.com/calculator">
+<meta property="og:title" content="Ohio Natural Gas Savings Calculator | Ohio Rate Watch">
+<meta property="og:description" content="Calculate how much you could save by switching natural gas suppliers in Ohio. Enter your current rate and usage to compare live offers.">
+<meta property="og:image" content="https://ohioratewatch.com/og-image.png">
+<!-- Twitter Card -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Ohio Natural Gas Savings Calculator | Ohio Rate Watch">
+<meta name="twitter:description" content="Calculate how much you could save by switching natural gas suppliers in Ohio. Enter your current rate and usage to compare live offers.">
+<meta name="twitter:image" content="https://ohioratewatch.com/og-image.png">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f8f9fa; color: #1a1a2e; }
+
+  /* NAV */
+  nav { background: #fff; border-bottom: 2px solid #e8f4f8; padding: 0 24px; display: flex; align-items: center; justify-content: space-between; height: 64px; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+  .logo { font-size: 1.3rem; font-weight: 800; color: #1565c0; letter-spacing: -0.5px; text-decoration: none; }
+  .logo span { color: #e53935; }
+  nav a { color: #555; text-decoration: none; font-size: 0.9rem; font-weight: 500; }
+  nav a:hover { color: #1565c0; }
+
+  /* HERO */
+  .hero { background: linear-gradient(135deg, #1565c0 0%, #0d47a1 100%); color: #fff; padding: 64px 24px 72px; text-align: center; }
+  .hero .badge { display: inline-block; background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3); padding: 6px 14px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; letter-spacing: 0.5px; margin-bottom: 20px; text-transform: uppercase; }
+  .hero h1 { font-size: clamp(1.8rem, 4.5vw, 2.8rem); font-weight: 900; line-height: 1.2; max-width: 720px; margin: 0 auto 16px; }
+  .hero h1 em { color: #ffcc02; font-style: normal; }
+  .hero p.subhead { font-size: 1.05rem; opacity: 0.9; max-width: 540px; margin: 0 auto 24px; line-height: 1.6; }
+
+  /* Share / Feedback button row */
+  .hero-actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-bottom: 0; }
+  .btn-share, .btn-feedback {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 7px 16px; border-radius: 20px; font-size: 0.82rem; font-weight: 600;
+    cursor: pointer; transition: all 0.15s; text-decoration: none;
+  }
+  .btn-share {
+    background: rgba(255,255,255,0.18); border: 1.5px solid rgba(255,255,255,0.5);
+    color: #fff;
+  }
+  .btn-share:hover { background: rgba(255,255,255,0.28); color: #fff; }
+  .btn-feedback {
+    background: transparent; border: 1.5px solid rgba(255,255,255,0.35);
+    color: rgba(255,255,255,0.85);
+  }
+  .btn-feedback:hover { background: rgba(255,255,255,0.1); color: #fff; border-color: rgba(255,255,255,0.6); }
+
+  /* CALCULATOR CARD */
+  .calc-wrap { max-width: 860px; margin: -36px auto 0; padding: 0 20px 56px; position: relative; z-index: 2; }
+  .calc-card { background: #fff; border-radius: 20px; box-shadow: 0 8px 40px rgba(0,0,0,0.12); overflow: hidden; }
+
+  .calc-inputs { padding: 36px 36px 28px; }
+  .calc-inputs h2 { font-size: 1rem; font-weight: 700; color: #1565c0; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 24px; }
+
+  .input-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; margin-bottom: 18px; }
+  @media (max-width: 600px) { .input-grid { grid-template-columns: 1fr; } .calc-inputs { padding: 24px 20px 20px; } }
+
+  .input-group label { display: block; font-size: 0.85rem; font-weight: 700; color: #374151; margin-bottom: 10px; }
+  .input-row { display: flex; align-items: center; gap: 12px; }
+  .input-row input[type="range"] {
+    flex: 1; -webkit-appearance: none; height: 6px; border-radius: 4px;
+    background: linear-gradient(to right, #1565c0 var(--pct, 30%), #e5e7eb var(--pct, 30%));
+    outline: none; cursor: pointer;
+  }
+  .input-row input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 20px; height: 20px; border-radius: 50%;
+    background: #1565c0; border: 3px solid #fff; box-shadow: 0 1px 6px rgba(21,101,192,0.5);
+    cursor: pointer;
+  }
+  .input-row input[type="number"] {
+    width: 88px; flex-shrink: 0; padding: 8px 10px; border: 2px solid #e5e7eb;
+    border-radius: 8px; font-size: 0.95rem; font-weight: 700; text-align: center;
+    color: #111; outline: none; transition: border-color 0.15s;
+  }
+  .input-row input[type="number"]:focus { border-color: #1565c0; }
+  .input-group .range-labels { display: flex; justify-content: space-between; font-size: 0.72rem; color: #9ca3af; margin-top: 5px; padding: 0 2px; }
+
+  .helper { font-size: 0.8rem; color: #6b7280; margin-top: 4px; }
+
+  /* TERRITORY SELECTOR */
+  .territory-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .territory-row label { font-size: 0.85rem; font-weight: 700; color: #374151; white-space: nowrap; }
+  .territory-row select {
+    padding: 8px 14px; border: 2px solid #e5e7eb; border-radius: 8px;
+    font-size: 0.9rem; font-weight: 600; color: #111; background: #fff;
+    outline: none; cursor: pointer; transition: border-color 0.15s;
+  }
+  .territory-row select:focus { border-color: #1565c0; }
+
+  /* DIVIDER */
+  .calc-divider { height: 2px; background: linear-gradient(to right, #e8f4f8, #f0f4f8, #e8f4f8); margin: 0; }
+
+  /* RESULTS */
+  .calc-results { padding: 28px 36px 36px; }
+  @media (max-width: 600px) { .calc-results { padding: 20px 20px 28px; } }
+  .results-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
+  .results-header h2 { font-size: 1.1rem; font-weight: 800; color: #1a1a2e; }
+  .results-meta { font-size: 0.78rem; color: #9ca3af; }
+  .live-dot { display: inline-block; width: 7px; height: 7px; background: #22c55e; border-radius: 50%; margin-right: 4px; vertical-align: middle; }
+
+  /* PLAN CARDS */
+  .plan-cards { display: flex; flex-direction: column; gap: 10px; }
+
+  .plan-card {
+    display: grid;
+    grid-template-columns: 1fr auto auto auto;
+    align-items: center;
+    gap: 12px 20px;
+    padding: 16px 20px;
+    border-radius: 12px;
+    border: 2px solid #e5e7eb;
+    background: #fff;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  .plan-card:hover { border-color: #93c5fd; box-shadow: 0 2px 12px rgba(21,101,192,0.08); }
+  .plan-card.best { border-color: #22c55e; background: #f0fdf4; }
+  .plan-card.no-savings { border-color: #e5e7eb; background: #fafafa; opacity: 0.7; }
+  @media (max-width: 640px) {
+    .plan-card { grid-template-columns: 1fr 1fr; grid-template-rows: auto auto; }
+    .plan-card .plan-cta { grid-column: 1 / -1; text-align: center; }
+  }
+
+  .plan-name { font-size: 0.95rem; font-weight: 700; color: #111; }
+  .plan-rate { font-size: 0.82rem; color: #6b7280; margin-top: 2px; }
+  .best-badge { display: inline-block; background: #dcfce7; color: #166534; font-size: 0.65rem; font-weight: 700; border-radius: 6px; padding: 2px 7px; margin-left: 6px; vertical-align: middle; }
+
+  .plan-savings { text-align: right; }
+  .savings-monthly { font-size: 1.05rem; font-weight: 800; }
+  .savings-monthly.positive { color: #16a34a; }
+  .savings-monthly.negative { color: #9ca3af; }
+  .savings-annual { font-size: 0.75rem; color: #6b7280; margin-top: 1px; }
+
+  .plan-cta a {
+    display: inline-block; padding: 8px 18px; border-radius: 8px;
+    font-size: 0.85rem; font-weight: 700; text-decoration: none;
+    white-space: nowrap;
+    background: #1565c0; color: #fff;
+    transition: background 0.15s;
+  }
+  .plan-cta a:hover { background: #1251a3; }
+  .plan-card.no-savings .plan-cta a { background: #e5e7eb; color: #6b7280; pointer-events: none; }
+
+  /* LOADING / EMPTY STATES */
+  .results-loading { text-align: center; padding: 40px; color: #6b7280; font-size: 0.95rem; }
+  .results-empty { text-align: center; padding: 36px 20px; }
+  .results-empty .empty-icon { font-size: 2.4rem; margin-bottom: 12px; }
+  .results-empty p { color: #374151; font-weight: 600; font-size: 1rem; margin-bottom: 6px; }
+  .results-empty .empty-sub { color: #9ca3af; font-size: 0.85rem; font-weight: 400; }
+
+  /* BELOW CALCULATOR */
+  .below-calc { max-width: 860px; margin: 0 auto; padding: 0 20px 64px; }
+  .cta-banner { background: linear-gradient(135deg, #1565c0, #1251a3); color: #fff; border-radius: 14px; padding: 28px 32px; display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap; margin-bottom: 16px; }
+  .cta-banner p { font-size: 0.95rem; line-height: 1.5; opacity: 0.95; }
+  .cta-banner p strong { display: block; font-size: 1.05rem; margin-bottom: 4px; }
+  .cta-banner a { display: inline-block; background: #ffcc02; color: #1a1a2e; padding: 11px 22px; border-radius: 8px; font-size: 0.9rem; font-weight: 800; text-decoration: none; white-space: nowrap; flex-shrink: 0; transition: background 0.15s; }
+  .cta-banner a:hover { background: #f9a825; }
+  .data-note { font-size: 0.78rem; color: #9ca3af; text-align: center; line-height: 1.7; }
+
+  /* FOOTER */
+  footer { background: #111827; color: #9ca3af; padding: 28px 24px; text-align: center; font-size: 0.82rem; line-height: 1.8; }
+  footer strong { color: #fff; }
+  footer a { color: #60a5fa; text-decoration: none; }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a href="/" class="logo">Ohio<span>Rate</span>Watch <span style="font-size:0.55rem;background:#f59e0b;color:#fff;padding:2px 7px;border-radius:20px;font-weight:700;letter-spacing:0.5px;vertical-align:middle;">BETA</span></a>
+  <div style="display:flex;gap:20px;align-items:center;">
+    <a href="/learn">Learn</a>
+    <a href="/methodology">About</a>
+    <a href="/calculator" style="color:#1565c0;font-weight:700;">Calculator</a>
+    <a href="/#signup" style="color:#1565c0;font-weight:600;text-decoration:none;border:1.5px solid #1565c0;padding:6px 14px;border-radius:6px;">Get Free Alerts</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="badge">🧮 Savings Calculator · Ohio Natural Gas</div>
+  <h1>How Much Could You Save on <em>Natural Gas?</em></h1>
+  <p class="subhead">Enter your current rate and usage to see real savings from Ohio's cheapest suppliers.</p>
+  <div class="hero-actions">
+    <button class="btn-share" onclick="shareCalc()">📤 Share this tool</button>
+    <a class="btn-feedback" href="mailto:feedback@ohioratewatch.com?subject=Calculator Feedback">✉️ Send Feedback</a>
+  </div>
+</div>
+
+<!-- CALCULATOR CARD -->
+<div class="calc-wrap">
+  <div class="calc-card">
+
+    <!-- INPUTS -->
+    <div class="calc-inputs">
+      <h2>Your Usage</h2>
+
+      <div class="input-grid">
+
+        <!-- Rate input -->
+        <div class="input-group">
+          <label for="rate-slider">Your current rate ($/ccf)</label>
+          <div class="input-row">
+            <input type="range" id="rate-slider" min="0.40" max="1.50" step="0.01" value="0.85">
+            <input type="number" id="rate-number" min="0.40" max="1.50" step="0.01" value="0.85">
+          </div>
+          <div class="range-labels"><span>$0.40</span><span>$1.50</span></div>
+        </div>
+
+        <!-- Usage input -->
+        <div class="input-group">
+          <label for="usage-slider">Monthly Usage (CCF)</label>
+          <div class="input-row">
+            <input type="range" id="usage-slider" min="10" max="200" step="5" value="50">
+            <input type="number" id="usage-number" min="10" max="200" step="5" value="50">
+          </div>
+          <div class="range-labels"><span>10 ccf</span><span>200 ccf</span></div>
+        </div>
+
+      </div>
+
+      <!-- Territory selector + helper -->
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;">
+        <div class="territory-row">
+          <label for="territory-select">Territory:</label>
+          <select id="territory-select">
+            <option value="8" selected>Columbia Gas (most of Ohio)</option>
+            <option value="1">Enbridge Gas (NE Ohio)</option>
+            <option value="11">CenterPoint (Dayton)</option>
+            <option value="10">Duke Energy (Cincinnati)</option>
+          </select>
+        </div>
+        <p class="helper">💡 Find these on your gas bill. CCF = hundred cubic feet.</p>
+      </div>
+    </div>
+
+    <div class="calc-divider"></div>
+
+    <!-- RESULTS -->
+    <div class="calc-results">
+      <div class="results-header">
+        <h2>Top plans vs your current rate</h2>
+        <span class="results-meta" id="results-meta"><span class="live-dot"></span>Loading live rates…</span>
+      </div>
+      <div id="plan-cards-wrap">
+        <div class="results-loading">Fetching live supplier rates…</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- BELOW CALCULATOR -->
+<div class="below-calc">
+  <div class="cta-banner">
+    <p>
+      <strong>Want an alert when rates drop below your threshold?</strong>
+      Get notified the moment a better deal is available for your territory — free, no spam.
+    </p>
+    <a href="/#signup">Get Free Alerts →</a>
+  </div>
+  <p class="data-note">
+    Rates updated daily from <a href="https://energychoice.ohio.gov" target="_blank" style="color:#60a5fa;">energychoice.ohio.gov</a>.
+    Savings estimates are based on your inputs and current certified offers. Always verify terms directly with suppliers before enrolling.
+  </p>
+</div>
+
+<!-- 811 / FOOTER -->
+<footer>
+  <strong>OhioRateWatch.com</strong> · A project of EJ Systems LLC · Cleveland, Ohio · <a href="tel:8334317283">833.431.RATE</a><br>
+  <br>
+  <strong style="color:#e5e7eb;">Independent &amp; Non-Commercial</strong> — We do not receive commissions from suppliers. Rates are sorted by price only. No featured listings. Ever.<br>
+  <a href="/methodology" style="color:#60a5fa;">How our data works →</a><br>
+  <br>
+  Rate data sourced from <a href="https://www.energychoice.ohio.gov" target="_blank">PUCO Energy Choice Ohio</a>. Not affiliated with any supplier, Columbia Gas, or any utility company.<br>
+  Always verify current rates, terms, and fees directly with suppliers before switching service.<br>
+  <br>
+  Questions or concerns? Contact the <a href="https://www.puco.ohio.gov" target="_blank">Public Utilities Commission of Ohio (PUCO)</a> at 1-800-686-7826
+  or the <a href="https://www.pickocc.org" target="_blank">Ohio Consumers' Counsel (OCC)</a> at 1-877-742-5622.<br>
+  <br>
+  <a href="https://github.com/ej-systems/ohio-rate-watch" target="_blank" style="color:#60a5fa;">Open source under AGPL-3.0</a> &nbsp;·&nbsp;
+  <button onclick="shareCalc()" style="background:none;border:none;color:#60a5fa;cursor:pointer;font-size:0.82rem;padding:0;text-decoration:underline;">Share this site</button>
+</footer>
+
+<script>
+// ── Slider ↔ number sync + gradient fill ────────────────────────────────────
+function syncSliderToNumber(sliderId, numberId, min, max) {
+  const slider = document.getElementById(sliderId);
+  const number = document.getElementById(numberId);
+
+  function updateGradient(el) {
+    const pct = ((+el.value - +el.min) / (+el.max - +el.min)) * 100;
+    el.style.setProperty('--pct', pct + '%');
+  }
+
+  slider.addEventListener('input', () => {
+    number.value = slider.value;
+    updateGradient(slider);
+    onInputChange();
+  });
+  number.addEventListener('input', () => {
+    const clamped = Math.min(max, Math.max(min, +number.value || min));
+    slider.value = clamped;
+    updateGradient(slider);
+    onInputChange();
+  });
+  updateGradient(slider);
+}
+
+syncSliderToNumber('rate-slider', 'rate-number', 0.40, 1.50);
+syncSliderToNumber('usage-slider', 'usage-number', 10, 200);
+
+document.getElementById('territory-select').addEventListener('change', () => {
+  ratesCache = null;
+  onInputChange();
+});
+
+// ── State ────────────────────────────────────────────────────────────────────
+let ratesCache = null;
+let debounceTimer = null;
+
+function onInputChange() {
+  clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(renderResults, 120);
+}
+
+// ── Fetch rates ──────────────────────────────────────────────────────────────
+async function fetchRates(territoryId) {
+  const res = await fetch('/api/rates?territory=' + territoryId + '&category=NaturalGas&rateCode=1');
+  if (!res.ok) throw new Error('API error');
+  return res.json();
+}
+
+// ── Render ───────────────────────────────────────────────────────────────────
+async function renderResults() {
+  const currentRate = parseFloat(document.getElementById('rate-number').value) || 0.85;
+  const usage       = parseFloat(document.getElementById('usage-number').value) || 50;
+  const territoryId = document.getElementById('territory-select').value;
+  const wrap        = document.getElementById('plan-cards-wrap');
+  const metaEl      = document.getElementById('results-meta');
+
+  if (!ratesCache) {
+    wrap.innerHTML = '<div class="results-loading">Fetching live supplier rates…</div>';
+    metaEl.innerHTML = '<span class="live-dot" style="background:#f59e0b;"></span>Loading…';
+    try {
+      ratesCache = await fetchRates(territoryId);
+    } catch (e) {
+      wrap.innerHTML = '<div class="results-loading" style="color:#dc2626;">Failed to load rates. Please try again.</div>';
+      return;
+    }
+  }
+
+  const allPlans = (ratesCache.suppliers || ratesCache.plans || [])
+    .filter(p => p.price && p.price > 0 && p.rateType === 'fixed');
+
+  // Compute savings, sort descending
+  const ranked = allPlans
+    .map(p => ({
+      ...p,
+      monthlySavings: (currentRate - p.price) * usage,
+      annualSavings:  (currentRate - p.price) * usage * 12,
+    }))
+    .sort((a, b) => b.monthlySavings - a.monthlySavings)
+    .slice(0, 5);
+
+  const scrapedAt = ratesCache.scrapedAt;
+  if (scrapedAt) {
+    const ts = new Date(scrapedAt);
+    const fmt = ts.toLocaleString('en-US', { timeZone: 'America/New_York', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
+    metaEl.innerHTML = '<span class="live-dot"></span>Updated ' + fmt + ' ET';
+  } else {
+    metaEl.innerHTML = '<span class="live-dot"></span>Live rates';
+  }
+
+  if (ranked.length === 0) {
+    wrap.innerHTML = `
+      <div class="results-empty">
+        <div class="empty-icon">✅</div>
+        <p>No fixed-rate plans found for this territory.</p>
+        <p class="empty-sub">Try a different territory or check back after the next data refresh.</p>
+      </div>`;
+    return;
+  }
+
+  const allMoreExpensive = ranked.every(p => p.monthlySavings <= 0);
+  if (allMoreExpensive) {
+    wrap.innerHTML = `
+      <div class="results-empty">
+        <div class="empty-icon">🏆</div>
+        <p>You're already on a competitive rate.</p>
+        <p class="empty-sub">No current fixed-rate plan beats your rate of $${currentRate.toFixed(3)}/ccf. Check back after the next scrape.</p>
+      </div>`;
+    return;
+  }
+
+  let html = '<div class="plan-cards">';
+  ranked.forEach((p, i) => {
+    const positive = p.monthlySavings > 0;
+    const cardClass = i === 0 && positive ? 'plan-card best' : positive ? 'plan-card' : 'plan-card no-savings';
+    const mSavings  = positive
+      ? `<span class="savings-monthly positive">+$${p.monthlySavings.toFixed(2)}/mo</span>`
+      : `<span class="savings-monthly negative">−$${Math.abs(p.monthlySavings).toFixed(2)}/mo</span>`;
+    const aSavings  = positive
+      ? `<div class="savings-annual">+$${p.annualSavings.toFixed(0)}/year</div>`
+      : '';
+    const ctaHref   = p.signUpUrl || '/#rates';
+    const ctaLabel  = positive ? 'View Offer →' : 'View →';
+    const bestBadge = i === 0 && positive ? '<span class="best-badge">Best savings</span>' : '';
+
+    html += `
+      <div class="${cardClass}">
+        <div>
+          <div class="plan-name">${escHtml(p.name || p.supplier || 'Unknown')}${bestBadge}</div>
+          <div class="plan-rate">$${p.price.toFixed(3)}/ccf · Fixed rate</div>
+        </div>
+        <div class="plan-savings">${mSavings}${aSavings}</div>
+        <div style="font-size:0.78rem;color:#9ca3af;text-align:right;">vs your $${currentRate.toFixed(3)}/ccf<br>${usage} ccf/mo</div>
+        <div class="plan-cta">
+          ${positive
+            ? `<a href="${escHtml(ctaHref)}" target="${p.signUpUrl ? '_blank' : '_self'}" rel="noopener">${ctaLabel}</a>`
+            : `<a href="#" style="pointer-events:none;">${ctaLabel}</a>`
+          }
+        </div>
+      </div>`;
+  });
+  html += '</div>';
+  wrap.innerHTML = html;
+}
+
+function escHtml(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── Share ────────────────────────────────────────────────────────────────────
+function shareCalc() {
+  if (navigator.share) {
+    navigator.share({
+      title: 'Ohio Natural Gas Savings Calculator',
+      text: 'Calculate how much you could save by switching natural gas suppliers in Ohio.',
+      url: 'https://ohioratewatch.com/calculator'
+    });
+  } else {
+    navigator.clipboard.writeText('https://ohioratewatch.com/calculator')
+      .then(() => alert('Link copied to clipboard!'));
+  }
+}
+
+// ── Boot ─────────────────────────────────────────────────────────────────────
+renderResults();
+</script>
+
+</body>
+</html>
