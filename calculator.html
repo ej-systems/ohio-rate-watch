@@ -259,6 +259,9 @@
       <div id="plan-cards-wrap">
         <div class="results-loading">Fetching live supplier rates…</div>
       </div>
+      <div id="timing-tip" style="display:none;margin-top:16px;background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:12px 16px;font-size:0.82rem;color:#92400e;line-height:1.5;">
+        ⏱️ Seeing savings? The best time to lock in gas rates is <strong>September–October</strong> so your new rate applies before winter. Switches take 1–2 billing cycles. <a href="/learn#when-to-switch" style="color:#78350f;font-weight:600;">Learn the timing strategy →</a>
+      </div>
     </div>
 
   </div>
@@ -493,6 +496,9 @@ async function renderResults() {
   });
   html += '</div>';
   wrap.innerHTML = html;
+  // Show timing tip when savings results are visible
+  const tip = document.getElementById('timing-tip');
+  if (tip) tip.style.display = 'block';
 }
 
 function escHtml(str) {
