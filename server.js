@@ -966,7 +966,8 @@ const server = http.createServer(async (req, res) => {
   // GET /api/scrape-status
   if (req.method === 'GET' && url.pathname === '/api/scrape-status') {
     try {
-      const { rows } = await pool.query(`
+      // Try scrape_runs first; fall back to supplier_offers scraped_date
+      const { rows: runRows } = await pool.query(`
         SELECT
           MAX(CASE WHEN status = 'success' THEN started_at END) AS last_success,
           MAX(started_at) AS last_run,
@@ -974,15 +975,34 @@ const server = http.createServer(async (req, res) => {
           (SELECT row_count FROM scrape_runs WHERE status = 'success' ORDER BY id DESC LIMIT 1) AS row_count
         FROM scrape_runs
       `);
-      const r = rows[0] || {};
-      const lastSuccess = r.last_success ? new Date(r.last_success) : null;
+      const r = runRows[0] || {};
+      let lastSuccess = r.last_success ? new Date(r.last_success) : null;
+      let rowCount = r.row_count || null;
+      let status = r.status || null;
+
+      // Fallback: derive from supplier_offers if scrape_runs is empty
+      if (!lastSuccess) {
+        const { rows: offerRows } = await pool.query(`
+          SELECT MAX(scraped_date) AS last_date, COUNT(*) AS row_count
+          FROM supplier_offers
+          WHERE scraped_date = (SELECT MAX(scraped_date) FROM supplier_offers)
+        `);
+        const o = offerRows[0] || {};
+        if (o.last_date) {
+          // scraped_date is TEXT 'YYYY-MM-DD' — treat as noon ET of that day
+          lastSuccess = new Date(o.last_date + 'T17:00:00Z');
+          rowCount = parseInt(o.row_count) || null;
+          status = 'success';
+        }
+      }
+
       const hoursSince = lastSuccess ? ((Date.now() - lastSuccess.getTime()) / 3600000).toFixed(1) : null;
       res.writeHead(200, allHeaders());
       res.end(JSON.stringify({
         lastSuccess: lastSuccess ? lastSuccess.toISOString() : null,
         lastRun: r.last_run ? new Date(r.last_run).toISOString() : null,
-        status: r.status || 'unknown',
-        rowCount: r.row_count || null,
+        status: status || 'unknown',
+        rowCount,
         hoursSinceUpdate: hoursSince ? parseFloat(hoursSince) : null,
       }));
     } catch (err) {
