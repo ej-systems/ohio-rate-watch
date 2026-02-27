@@ -260,6 +260,139 @@
   <div class="subtext">Free forever · No spam · Unsubscribe anytime</div>
 </div>
 
+<!-- COMPACT SAVINGS CALCULATOR -->
+<section id="calculator" style="background:#f8f9fa;border-top:1px solid #e5e7eb;border-bottom:1px solid #e5e7eb;padding:40px 24px;">
+  <div style="max-width:880px;margin:0 auto;">
+    <h2 style="font-size:1.4rem;font-weight:800;color:#111;margin:0 0 6px;">How Much Could You Save?</h2>
+    <p style="color:#6b7280;font-size:0.93rem;margin:0 0 24px;">Enter your rate and usage — see your savings instantly.</p>
+
+    <div id="calc-inputs" style="display:flex;gap:20px;flex-wrap:wrap;margin-bottom:24px;">
+
+      <!-- Territory -->
+      <div style="flex:1;min-width:180px;">
+        <label for="calc-territory" style="display:block;font-size:0.8rem;font-weight:600;color:#374151;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.4px;">Territory</label>
+        <select id="calc-territory" style="width:100%;padding:9px 12px;border:1.5px solid #d1d5db;border-radius:8px;font-size:0.93rem;background:#fff;color:#111;cursor:pointer;">
+          <option value="8">Columbia Gas (default)</option>
+          <option value="1">Enbridge Gas Ohio</option>
+          <option value="11">CenterPoint Energy</option>
+          <option value="10">Duke Energy Ohio</option>
+        </select>
+      </div>
+
+      <!-- Current Rate -->
+      <div style="flex:1;min-width:180px;">
+        <label for="calc-rate-num" style="display:block;font-size:0.8rem;font-weight:600;color:#374151;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.4px;">Your rate ($/ccf)</label>
+        <input type="number" id="calc-rate-num" min="0.40" max="1.50" step="0.01" value="0.85"
+          style="width:100%;padding:9px 12px;border:1.5px solid #d1d5db;border-radius:8px;font-size:0.93rem;color:#111;box-sizing:border-box;">
+        <input type="range" id="calc-rate-slider" min="0.40" max="1.50" step="0.01" value="0.85"
+          style="width:100%;margin-top:8px;accent-color:#1565c0;">
+      </div>
+
+      <!-- Monthly Usage -->
+      <div style="flex:1;min-width:180px;">
+        <label for="calc-usage-num" style="display:block;font-size:0.8rem;font-weight:600;color:#374151;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.4px;">Usage (ccf/mo)</label>
+        <input type="number" id="calc-usage-num" min="10" max="200" step="5" value="50"
+          style="width:100%;padding:9px 12px;border:1.5px solid #d1d5db;border-radius:8px;font-size:0.93rem;color:#111;box-sizing:border-box;">
+        <input type="range" id="calc-usage-slider" min="10" max="200" step="5" value="50"
+          style="width:100%;margin-top:8px;accent-color:#1565c0;">
+      </div>
+
+    </div>
+
+    <!-- Result Card -->
+    <div id="calc-result" style="background:#fff;border:1.5px solid #e5e7eb;border-radius:12px;padding:20px 24px;min-height:72px;">
+      <div id="calc-result-inner" style="color:#6b7280;font-size:0.9rem;">Loading rate data…</div>
+    </div>
+  </div>
+</section>
+
+<script>
+(function() {
+  const TERRITORY_NAMES = { 8:'Columbia Gas', 1:'Enbridge Gas Ohio', 11:'CenterPoint Energy', 10:'Duke Energy Ohio' };
+  const calcCache = {};
+  let calcDebounce = null;
+
+  function syncPair(numEl, sliderEl) {
+    numEl.addEventListener('input', () => { sliderEl.value = numEl.value; scheduleCalc(); });
+    sliderEl.addEventListener('input', () => { numEl.value = sliderEl.value; scheduleCalc(); });
+  }
+
+  syncPair(document.getElementById('calc-rate-num'), document.getElementById('calc-rate-slider'));
+  syncPair(document.getElementById('calc-usage-num'), document.getElementById('calc-usage-slider'));
+  document.getElementById('calc-territory').addEventListener('change', scheduleCalc);
+
+  function scheduleCalc() {
+    clearTimeout(calcDebounce);
+    calcDebounce = setTimeout(runCalc, 150);
+  }
+
+  async function getBestFixed(tid) {
+    if (calcCache[tid]) return calcCache[tid];
+    // Reuse ratesCache from main page if available and already fetched
+    const mainKey = tid + '-1';
+    if (typeof ratesCache !== 'undefined' && ratesCache[mainKey]) {
+      calcCache[tid] = ratesCache[mainKey];
+      return calcCache[tid];
+    }
+    try {
+      const r = await fetch('/api/rates?territory=' + tid + '&category=NaturalGas&rateCode=1');
+      calcCache[tid] = await r.json();
+    } catch(e) {
+      calcCache[tid] = null;
+    }
+    return calcCache[tid];
+  }
+
+  async function runCalc() {
+    const tid = parseInt(document.getElementById('calc-territory').value);
+    const myRate = parseFloat(document.getElementById('calc-rate-num').value);
+    const usage = parseFloat(document.getElementById('calc-usage-num').value);
+    const inner = document.getElementById('calc-result-inner');
+    inner.textContent = 'Calculating…';
+
+    const data = await getBestFixed(tid);
+    if (!data || !data.suppliers) {
+      inner.innerHTML = '<span style="color:#dc2626;">Could not load rate data. Please try again later.</span>';
+      return;
+    }
+
+    const fixed = (data.suppliers || [])
+      .filter(s => s.price && s.price > 0 && s.rateType === 'fixed' && !s.introPrice &&
+        !/bundle|electric.*gas|gas.*electric/i.test((s.offerDetails||'') + ' ' + (s.promoDetails||'')))
+      .sort((a, b) => a.price - b.price);
+
+    if (!fixed.length) {
+      inner.innerHTML = '<span style="color:#6b7280;">No fixed-rate plans available for this territory right now.</span>';
+      return;
+    }
+
+    const best = fixed[0];
+    const saveMo = (myRate - best.price) * usage;
+    const saveYr = saveMo * 12;
+    const savePct = Math.round((1 - best.price / myRate) * 100);
+
+    if (saveMo <= 0) {
+      inner.innerHTML =
+        '<strong style="font-size:1rem;color:#111;">Best available plan: ' + best.name + ' at $' + best.price.toFixed(3) + '/ccf</strong><br>' +
+        '<span style="color:#6b7280;font-size:0.88rem;margin-top:4px;display:inline-block;">You\'re already on a competitive rate.</span><br>' +
+        '<span style="font-size:0.85rem;margin-top:10px;display:inline-block;">' +
+        '<a href="#rates" style="color:#1565c0;font-weight:600;text-decoration:none;">See all plans ↓</a>&nbsp;&nbsp;·&nbsp;&nbsp;' +
+        '<a href="#signup" style="color:#1565c0;font-weight:600;text-decoration:none;">Get free alerts when rates drop →</a></span>';
+    } else {
+      inner.innerHTML =
+        '<strong style="font-size:1rem;color:#111;">Best available plan: ' + best.name + ' at $' + best.price.toFixed(3) + '/ccf</strong><br>' +
+        '<span style="color:#16a34a;font-weight:700;font-size:0.97rem;margin-top:6px;display:inline-block;">→ You could save <strong>$' + saveMo.toFixed(0) + '/month</strong> · <strong>$' + saveYr.toFixed(0) + '/year</strong> (' + savePct + '% less than your current rate)</span><br>' +
+        '<span style="font-size:0.85rem;margin-top:10px;display:inline-block;">' +
+        '<a href="#rates" style="color:#1565c0;font-weight:600;text-decoration:none;">See all plans ↓</a>&nbsp;&nbsp;·&nbsp;&nbsp;' +
+        '<a href="#signup" style="color:#1565c0;font-weight:600;text-decoration:none;">Get free alerts when rates drop →</a></span>';
+    }
+  }
+
+  // Kick off initial calc
+  runCalc();
+})();
+</script>
+
 <!-- STATS -->
 <div class="stats">
   <div class="stat"><div class="stat-num" id="stat-offers">—</div><div class="stat-label">Supplier Offers Tracked</div></div>
