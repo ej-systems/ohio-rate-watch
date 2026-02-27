@@ -169,6 +169,12 @@
   footer { background: #111827; color: #9ca3af; padding: 28px 24px; text-align: center; font-size: 0.82rem; line-height: 1.8; }
   footer strong { color: #fff; }
   footer a { color: #60a5fa; text-decoration: none; }
+
+  /* Unit toggle pill */
+  .unit-toggle-pill { display:inline-flex;align-items:center;background:#f3f4f6;border:1px solid #d1d5db;border-radius:20px;padding:2px 3px;gap:0;vertical-align:middle; }
+  .utp-btn { background:none;border:none;padding:3px 9px;border-radius:16px;font-size:0.72rem;font-weight:700;cursor:pointer;color:#6b7280;transition:all 0.15s;line-height:1; }
+  .utp-btn.active { background:#1565c0;color:#fff; }
+  .utp-sep { color:#d1d5db;font-size:0.65rem;padding:0 1px; }
 </style>
 </head>
 <body>
@@ -207,12 +213,12 @@
 
         <!-- Rate input -->
         <div class="input-group">
-          <label for="rate-slider">Your current rate ($/ccf)</label>
+          <label for="rate-slider">Your current rate (<span id="rate-unit-label">$/ccf</span>) <span class="unit-toggle-pill"><button data-unit-toggle="ccf" onclick="setUnit('ccf')" class="utp-btn active">CCF</button><span class="utp-sep">|</span><button data-unit-toggle="mcf" onclick="setUnit('mcf')" class="utp-btn">MCF</button></span></label>
           <div class="input-row">
             <input type="range" id="rate-slider" min="0.40" max="1.50" step="0.01" value="0.85">
             <input type="number" id="rate-number" min="0.40" max="1.50" step="0.01" value="0.85">
           </div>
-          <div class="range-labels"><span>$0.40</span><span>$1.50</span></div>
+          <div class="range-labels" id="rate-range-labels"><span>$0.40</span><span>$1.50</span></div>
         </div>
 
         <!-- Usage input -->
@@ -332,6 +338,55 @@ function onInputChange() {
   debounceTimer = setTimeout(renderResults, 120);
 }
 
+// ── Unit toggle system ────────────────────────────────────────────────────────
+window.UNIT = localStorage.getItem('gasUnit') || 'ccf';
+
+window.setUnit = function(unit) {
+  window.UNIT = unit;
+  localStorage.setItem('gasUnit', unit);
+
+  document.querySelectorAll('[data-unit-toggle]').forEach(function(btn) {
+    btn.classList.toggle('active', btn.dataset.unitToggle === unit);
+  });
+
+  var label = document.getElementById('rate-unit-label');
+  if (label) label.textContent = '$/' + unit;
+
+  var rangeLabels = document.getElementById('rate-range-labels');
+  var slider = document.getElementById('rate-slider');
+  var number = document.getElementById('rate-number');
+
+  if (unit === 'mcf') {
+    var curCCF = parseFloat(number.value) || 0.85;
+    var isCCFRange = parseFloat(slider.max) < 5;
+    var newVal = isCCFRange ? (curCCF * 10).toFixed(2) : number.value;
+    slider.min = '4.00'; slider.max = '15.00'; slider.step = '0.10'; slider.value = newVal;
+    number.min = '4.00'; number.max = '15.00'; number.step = '0.10'; number.value = newVal;
+    if (rangeLabels) rangeLabels.innerHTML = '<span>$4.00</span><span>$15.00</span>';
+  } else {
+    var curMCF = parseFloat(number.value) || 8.5;
+    var isMCFRange = parseFloat(slider.max) > 5;
+    var newValCCF = isMCFRange ? (curMCF / 10).toFixed(3) : number.value;
+    slider.min = '0.40'; slider.max = '1.50'; slider.step = '0.01'; slider.value = newValCCF;
+    number.min = '0.40'; number.max = '1.50'; number.step = '0.01'; number.value = newValCCF;
+    if (rangeLabels) rangeLabels.innerHTML = '<span>$0.40</span><span>$1.50</span>';
+  }
+
+  // update gradient
+  var pct = ((+slider.value - +slider.min) / (+slider.max - +slider.min)) * 100;
+  slider.style.setProperty('--pct', pct + '%');
+
+  ratesCache = null;
+  onInputChange();
+};
+
+// Apply saved unit on load
+(function() {
+  if (window.UNIT !== 'ccf') {
+    document.addEventListener('DOMContentLoaded', function() { setUnit(window.UNIT); });
+  }
+})();
+
 // ── Fetch rates ──────────────────────────────────────────────────────────────
 async function fetchRates(territoryId) {
   const res = await fetch('/api/rates?territory=' + territoryId + '&category=NaturalGas&rateCode=1');
@@ -341,7 +396,9 @@ async function fetchRates(territoryId) {
 
 // ── Render ───────────────────────────────────────────────────────────────────
 async function renderResults() {
-  const currentRate = parseFloat(document.getElementById('rate-number').value) || 0.85;
+  const rateInput   = parseFloat(document.getElementById('rate-number').value) || (window.UNIT === 'mcf' ? 8.5 : 0.85);
+  // Internally always work in CCF
+  const currentRate = (window.UNIT === 'mcf') ? rateInput / 10 : rateInput;
   const usage       = parseFloat(document.getElementById('usage-number').value) || 50;
   const territoryId = document.getElementById('territory-select').value;
   const wrap        = document.getElementById('plan-cards-wrap');
@@ -396,7 +453,7 @@ async function renderResults() {
       <div class="results-empty">
         <div class="empty-icon">🏆</div>
         <p>You're already on a competitive rate.</p>
-        <p class="empty-sub">No current fixed-rate plan beats your rate of $${currentRate.toFixed(3)}/ccf. Check back after the next scrape.</p>
+        <p class="empty-sub">No current fixed-rate plan beats your rate of $${((window.UNIT==='mcf') ? (currentRate*10).toFixed(2) : currentRate.toFixed(3))}/${window.UNIT||'ccf'}. Check back after the next scrape.</p>
       </div>`;
     return;
   }
@@ -414,15 +471,18 @@ async function renderResults() {
     const ctaHref   = p.signUpUrl || '/#rates';
     const ctaLabel  = positive ? 'View Offer →' : 'View →';
     const bestBadge = i === 0 && positive ? '<span class="best-badge">Best savings</span>' : '';
+    const planUnit  = window.UNIT || 'ccf';
+    const planDisplayPrice = planUnit === 'mcf' ? (p.price * 10).toFixed(2) : p.price.toFixed(3);
+    const yourDisplayRate  = planUnit === 'mcf' ? (currentRate * 10).toFixed(2) : currentRate.toFixed(3);
 
     html += `
       <div class="${cardClass}">
         <div>
           <div class="plan-name">${escHtml(p.name || p.supplier || 'Unknown')}${bestBadge}</div>
-          <div class="plan-rate">$${p.price.toFixed(3)}/ccf · Fixed rate</div>
+          <div class="plan-rate">$${planDisplayPrice}/${planUnit} · Fixed rate</div>
         </div>
         <div class="plan-savings">${mSavings}${aSavings}</div>
-        <div style="font-size:0.78rem;color:#9ca3af;text-align:right;">vs your $${currentRate.toFixed(3)}/ccf<br>${usage} ccf/mo</div>
+        <div style="font-size:0.78rem;color:#9ca3af;text-align:right;">vs your $${yourDisplayRate}/${planUnit}<br>${usage} ccf/mo</div>
         <div class="plan-cta">
           ${positive
             ? `<a href="${escHtml(ctaHref)}" target="${p.signUpUrl ? '_blank' : '_self'}" rel="noopener">${ctaLabel}</a>`

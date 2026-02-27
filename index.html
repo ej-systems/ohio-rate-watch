@@ -231,6 +231,12 @@
 }
 .rc-pill:hover { background: #e5e7eb; }
 .rc-pill.active { background: #1e40af; color: #fff; border-color: #1e40af; }
+
+/* Unit toggle pill */
+.unit-toggle-pill { display:inline-flex;align-items:center;background:#f3f4f6;border:1px solid #d1d5db;border-radius:20px;padding:2px 3px;gap:0;vertical-align:middle; }
+.utp-btn { background:none;border:none;padding:3px 9px;border-radius:16px;font-size:0.72rem;font-weight:700;cursor:pointer;color:#6b7280;transition:all 0.15s;line-height:1; }
+.utp-btn.active { background:#1565c0;color:#fff; }
+.utp-sep { color:#d1d5db;font-size:0.65rem;padding:0 1px; }
 </style>
 </head>
 <body>
@@ -281,7 +287,7 @@
 
       <!-- Current Rate -->
       <div style="flex:1;min-width:180px;">
-        <label for="calc-rate-num" style="display:block;font-size:0.8rem;font-weight:600;color:#374151;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.4px;">Your rate ($/ccf)</label>
+        <label for="calc-rate-num" style="display:block;font-size:0.8rem;font-weight:600;color:#374151;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.4px;">Your rate (<span id="calc-rate-unit-label">$/ccf</span>) <span class="unit-toggle-pill" style="text-transform:none;"><button data-unit-toggle="ccf" onclick="setUnit('ccf')" class="utp-btn active">CCF</button><span class="utp-sep">|</span><button data-unit-toggle="mcf" onclick="setUnit('mcf')" class="utp-btn">MCF</button></span></label>
         <input type="number" id="calc-rate-num" min="0.40" max="1.50" step="0.01" value="0.85"
           style="width:100%;padding:9px 12px;border:1.5px solid #d1d5db;border-radius:8px;font-size:0.93rem;color:#111;box-sizing:border-box;">
         <input type="range" id="calc-rate-slider" min="0.40" max="1.50" step="0.01" value="0.85"
@@ -345,7 +351,9 @@
 
   async function runCalc() {
     const tid = parseInt(document.getElementById('calc-territory').value);
-    const myRate = parseFloat(document.getElementById('calc-rate-num').value);
+    const myRateInput = parseFloat(document.getElementById('calc-rate-num').value);
+    // Always work in CCF internally; if MCF mode, input is in MCF so divide by 10
+    const myRate = (window.UNIT === 'mcf') ? myRateInput / 10 : myRateInput;
     const usage = parseFloat(document.getElementById('calc-usage-num').value);
     const inner = document.getElementById('calc-result-inner');
     inner.textContent = 'Calculating…';
@@ -371,16 +379,18 @@
     const saveYr = saveMo * 12;
     const savePct = Math.round((1 - best.price / myRate) * 100);
 
+    const calcUnit = window.UNIT || 'ccf';
+    const bestDisplayPx = calcUnit === 'mcf' ? '$' + (best.price * 10).toFixed(2) + '/mcf' : '$' + best.price.toFixed(3) + '/ccf';
     if (saveMo <= 0) {
       inner.innerHTML =
-        '<strong style="font-size:1rem;color:#111;">Best available plan: ' + best.name + ' at $' + best.price.toFixed(3) + '/ccf</strong><br>' +
+        '<strong style="font-size:1rem;color:#111;">Best available plan: ' + best.name + ' at ' + bestDisplayPx + '</strong><br>' +
         '<span style="color:#6b7280;font-size:0.88rem;margin-top:4px;display:inline-block;">You\'re already on a competitive rate.</span><br>' +
         '<span style="font-size:0.85rem;margin-top:10px;display:inline-block;">' +
         '<a href="#rates" style="color:#1565c0;font-weight:600;text-decoration:none;">See all plans ↓</a>&nbsp;&nbsp;·&nbsp;&nbsp;' +
         '<a href="#signup" style="color:#1565c0;font-weight:600;text-decoration:none;">Get free alerts when rates drop →</a></span>';
     } else {
       inner.innerHTML =
-        '<strong style="font-size:1rem;color:#111;">Best available plan: ' + best.name + ' at $' + best.price.toFixed(3) + '/ccf</strong><br>' +
+        '<strong style="font-size:1rem;color:#111;">Best available plan: ' + best.name + ' at ' + bestDisplayPx + '</strong><br>' +
         '<span style="color:#16a34a;font-weight:700;font-size:0.97rem;margin-top:6px;display:inline-block;">→ You could save <strong>$' + saveMo.toFixed(0) + '/month</strong> · <strong>$' + saveYr.toFixed(0) + '/year</strong> (' + savePct + '% less than your current rate)</span><br>' +
         '<span style="font-size:0.85rem;margin-top:10px;display:inline-block;">' +
         '<a href="#rates" style="color:#1565c0;font-weight:600;text-decoration:none;">See all plans ↓</a>&nbsp;&nbsp;·&nbsp;&nbsp;' +
@@ -430,6 +440,10 @@
 </div>
 <div id="city-bills-banner" style="display:none;background:linear-gradient(135deg,#eff6ff,#e0f2fe);border:1px solid #93c5fd;border-radius:10px;padding:12px 18px;margin-bottom:16px;font-size:0.85rem;color:#1e3a8a;line-height:1.6;"></div>
 <div id="territory-sco-bar" style="background:#fff3cd;border:1px solid #ffc107;border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:0.88rem;"></div>
+<div id="rates-unit-toggle-row" style="display:flex;align-items:center;gap:8px;margin-bottom:10px;font-size:0.82rem;color:#6b7280;">
+  View prices in: <span class="unit-toggle-pill"><button data-unit-toggle="ccf" onclick="setUnit('ccf')" class="utp-btn active">CCF</button><span class="utp-sep">|</span><button data-unit-toggle="mcf" onclick="setUnit('mcf')" class="utp-btn">MCF</button></span>
+  <span style="font-size:0.75rem;color:#9ca3af;">(1 MCF = 10 CCF — Enbridge bills in MCF)</span>
+</div>
 <div id="rates-loading" style="text-align:center;padding:40px;color:#6b7280;">Loading rates…</div>
 <div id="rates-last-updated" style="font-size:0.8rem;color:#9ca3af;margin-bottom:6px;display:none;"></div>
 <div id="rates-table-wrap" style="display:none;"></div>
@@ -966,7 +980,9 @@ async function renderTerritory(tid) {
 
   // Build rows — old card-style layout
   function buildRow(s) {
-    const price = '$' + s.price.toFixed(3);
+    const unitNow = window.UNIT || 'ccf';
+    const displayPrice = unitNow === 'mcf' ? '$' + (s.price * 10).toFixed(2) : '$' + s.price.toFixed(3);
+    const price = '<span class="price-display" data-ccf="' + s.price.toFixed(4) + '">' + displayPrice + '</span><span class="unit-label">/' + unitNow + '</span>';
     const savings = info.sco ? Math.round((1 - s.price / info.sco) * 100) : null;
     const etf = s.earlyTerminationFee || 0;
     const mfee = s.monthlyFee || 0;
@@ -988,7 +1004,7 @@ async function renderTerritory(tid) {
       '</td>' +
       '<td style="padding:14px 16px;vertical-align:middle;white-space:nowrap;">' +
         '<span style="font-size:1.2rem;font-weight:800;color:#111;">' + price + '</span>' +
-        (savings && savings > 0 ? '<span style="background:#d1fae5;color:#065f46;padding:2px 8px;border-radius:4px;font-size:0.78rem;font-weight:700;margin-left:8px;">Save ' + savings + '%</span>' : '') +
+        (savings && savings > 0 ? '<span style="background:#d1fae5;color:#065f46;padding:2px 8px;border-radius:4px;font-size:0.78rem;font-weight:700;margin-left:6px;">Save ' + savings + '%</span>' : '') +
       '</td>' +
       '<td style="padding:14px 16px;font-weight:700;color:' + (etf > 0 ? '#dc2626' : '#16a34a') + ';vertical-align:middle;">$' + etf.toFixed(2) + '</td>' +
       '<td style="padding:14px 16px;font-weight:700;color:' + (mfee > 0 ? '#dc2626' : '#16a34a') + ';vertical-align:middle;">$' + mfee.toFixed(2) + '</td>' +
@@ -1038,11 +1054,13 @@ async function renderTerritory(tid) {
   // Explanation cards text varies slightly for Duke (GCR vs SCO)
   var fixedCardText = 'Your price per ccf is locked for the contract term, even if the market rises. Best for predictability. Check the <strong style="color:#1d4ed8;">Early Term Fee</strong> before you sign \u2014 breaking a 12-month contract early can cost $75\u2013$150.';
   var varCardText   = 'Price adjusts month-to-month with the market. No long commitment. <strong style="color:#c2410c;">Watch out for intro rates</strong> \u2014 some companies advertise a low price that only lasts 1\u00a0month, then switches to market rate.';
+  const scoUnitNow = window.UNIT || 'ccf';
+  const scoDisplayPrice = info.sco ? (scoUnitNow === 'mcf' ? '$' + (info.sco * 10).toFixed(2) : '$' + info.sco.toFixed(3)) : '';
   var scoRowHtml = info.sco
     ? '<tr style="background:#fff8f8;"><td style="padding:12px 16px;color:#6b7280;font-style:italic;">' +
         '<span style="color:#1565c0;font-weight:600;">\u2139\ufe0f ' + info.name + ' Default Rate (SCO) \u2014 what you pay if you haven\u2019t switched</span>' +
       '</td>' +
-      '<td style="padding:12px 16px;font-weight:800;color:#dc2626;font-size:1.1rem;">$' + info.sco.toFixed(3) + '</td>' +
+      '<td style="padding:12px 16px;font-weight:800;color:#dc2626;font-size:1.1rem;"><span class="price-display" data-ccf="' + info.sco.toFixed(4) + '">' + scoDisplayPrice + '</span><span class="unit-label">/' + scoUnitNow + '</span></td>' +
       '<td style="padding:12px 16px;color:#6b7280;">\u2014</td>' +
       '<td style="padding:12px 16px;color:#6b7280;">\u2014</td>' +
       '<td></td></tr>'
@@ -1072,7 +1090,7 @@ async function renderTerritory(tid) {
     '<div style="overflow-x:auto;">' +
     '<table class="rate-table">' +
     '<thead><tr>' +
-    '<th>Supplier</th><th>Rate ($/ccf)</th><th>Early Term Fee</th><th>Monthly Fee</th><th></th>' +
+    '<th>Supplier</th><th class="rate-col-header">Rate ($/' + (window.UNIT||'ccf') + ')</th><th>Early Term Fee</th><th>Monthly Fee</th><th></th>' +
     '</tr></thead>' +
     '<tbody>' + rows + scoRowHtml + '</tbody>' +
     '</table></div>' +
@@ -1191,5 +1209,78 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 
+<script>
+// ── CCF/MCF Unit Toggle System ───────────────────────────────────────────────
+(function initUnitToggle() {
+  window.UNIT = localStorage.getItem('gasUnit') || 'ccf';
+
+  window.setUnit = function(unit) {
+    window.UNIT = unit;
+    localStorage.setItem('gasUnit', unit);
+
+    // Update all toggle buttons on page
+    document.querySelectorAll('[data-unit-toggle]').forEach(function(btn) {
+      btn.classList.toggle('active', btn.dataset.unitToggle === unit);
+    });
+
+    // Update all price-display spans
+    applyUnitToDisplays();
+
+    // Update column headers
+    document.querySelectorAll('.rate-col-header').forEach(function(el) {
+      el.textContent = 'Rate ($/' + unit + ')';
+    });
+
+    // Update compact calc rate label
+    var calcLabel = document.getElementById('calc-rate-unit-label');
+    if (calcLabel) calcLabel.textContent = '$/' + unit;
+
+    // Update compact calc slider range
+    var rateNum = document.getElementById('calc-rate-num');
+    var rateSlider = document.getElementById('calc-rate-slider');
+    if (rateNum && rateSlider) {
+      if (unit === 'mcf') {
+        var currentCCF = parseFloat(rateNum.value);
+        var isCCFRange = parseFloat(rateSlider.max) < 5;
+        var newVal = isCCFRange ? (currentCCF * 10).toFixed(2) : rateNum.value;
+        rateNum.min = '4.00'; rateNum.max = '15.00'; rateNum.step = '0.10'; rateNum.value = newVal;
+        rateSlider.min = '4.00'; rateSlider.max = '15.00'; rateSlider.step = '0.10'; rateSlider.value = newVal;
+      } else {
+        var currentMCF = parseFloat(rateNum.value);
+        var isMCFRange = parseFloat(rateSlider.max) > 5;
+        var newValCCF = isMCFRange ? (currentMCF / 10).toFixed(3) : rateNum.value;
+        rateNum.min = '0.40'; rateNum.max = '1.50'; rateNum.step = '0.01'; rateNum.value = newValCCF;
+        rateSlider.min = '0.40'; rateSlider.max = '1.50'; rateSlider.step = '0.01'; rateSlider.value = newValCCF;
+      }
+    }
+
+    // Re-run the compact calculator with new unit
+    if (typeof scheduleCalc === 'function') scheduleCalc();
+  };
+
+  window.applyUnitToDisplays = function() {
+    var unit = window.UNIT;
+    document.querySelectorAll('.price-display[data-ccf]').forEach(function(el) {
+      var ccf = parseFloat(el.dataset.ccf);
+      el.textContent = unit === 'mcf' ? '$' + (ccf * 10).toFixed(2) : '$' + ccf.toFixed(3);
+    });
+    document.querySelectorAll('.unit-label').forEach(function(el) {
+      el.textContent = '/' + unit;
+    });
+  };
+
+  // Apply saved unit on load (after a short delay so DOM is ready)
+  document.addEventListener('DOMContentLoaded', function() {
+    if (window.UNIT !== 'ccf') {
+      // Update toggle button states immediately
+      document.querySelectorAll('[data-unit-toggle]').forEach(function(btn) {
+        btn.classList.toggle('active', btn.dataset.unitToggle === window.UNIT);
+      });
+      // Slider/label updates
+      setUnit(window.UNIT);
+    }
+  });
+})();
+</script>
 </body>
 </html>
