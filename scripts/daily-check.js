@@ -698,6 +698,33 @@ async function main() {
     }];
   }
 
+  // Post daily summary to Discord
+  try {
+    const today = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/New_York' });
+    // Find lowest fixed rate across all territories for summary
+    const lowestOffers = [];
+    for (const page of current) {
+      const fixed = (page.suppliers || []).filter(s => s.rateType === 'fixed' && s.price > 0.1);
+      if (fixed.length > 0) {
+        const best = fixed.reduce((a, b) => a.price < b.price ? a : b);
+        lowestOffers.push({ territory: page.territory, supplier: best.supplierName, price: best.price, sco: page.defaultRate });
+      }
+    }
+    const lines = lowestOffers.map(o => {
+      const savingsPct = o.sco ? Math.round((1 - o.price / o.sco) * 100) : null;
+      const savingsStr = savingsPct && savingsPct > 0 ? ` · save ${savingsPct}% vs SCO` : '';
+      return `• **${o.territory}**: $${o.price.toFixed(3)}/ccf (${o.supplier}${savingsStr})`;
+    });
+    const changeNote = changes.length > 0
+      ? `\n⚡ **${changes.length} rate change${changes.length > 1 ? 's' : ''} detected** since last run`
+      : '\n✅ No significant rate changes since last run';
+    const summary = `📊 **Ohio Rate Watch — Daily Update** · ${today}\n\n**Lowest fixed rates by territory:**\n${lines.join('\n')}${changeNote}\n\n🔍 <https://ohioratewatch.com>`;
+    await sendDiscordAlert(summary);
+    log('Daily Discord summary posted');
+  } catch (err) {
+    log('WARNING: Daily Discord summary failed:', err.message);
+  }
+
   if (changes.length === 0) {
     log('No changes detected. No alerts sent.');
     process.exit(0);
