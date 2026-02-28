@@ -343,13 +343,15 @@ const server = http.createServer(async (req, res) => {
 
   if (req.method === 'GET' && url.pathname === '/api/stats') {
     try {
-      const today = new Date().toISOString().slice(0, 10);
+      // Use most recent scraped_date (avoids UTC/ET mismatch showing 0 after midnight UTC)
+      const { rows: dateRows } = await pool.query(`SELECT MAX(scraped_date) AS latest FROM supplier_offers`);
+      const latest = dateRows[0]?.latest || new Date().toISOString().slice(0, 10);
       const { rows } = await pool.query(
         `SELECT COUNT(*) as total_offers,
                 COUNT(DISTINCT supplier_name) as unique_suppliers,
                 MAX(price) as max_price,
                 MIN(price) FILTER (WHERE price > 0) as min_price
-         FROM supplier_offers WHERE scraped_date = $1`, [today]);
+         FROM supplier_offers WHERE scraped_date = $1`, [latest]);
       const r = rows[0];
       res.writeHead(200, allHeaders());
       res.end(JSON.stringify({
