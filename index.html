@@ -1113,11 +1113,11 @@ async function renderTerritory(tid) {
 
   // Show "Last updated" timestamp + source attribution
   if (data.scrapedAt) {
-    const ts = new Date(data.scrapedAt);
-    const fmt = ts.toLocaleString('en-US', {
+    // scrapedAt is 'YYYY-MM-DD' — append noon UTC to avoid timezone rollback
+    const ts = new Date(data.scrapedAt + 'T12:00:00Z');
+    const fmt = ts.toLocaleDateString('en-US', {
       timeZone: 'America/New_York',
       month: 'short', day: 'numeric', year: 'numeric',
-      hour: 'numeric', minute: '2-digit', hour12: true,
     });
     const tsEl = document.getElementById('rates-last-updated');
     if (tsEl) tsEl.innerHTML = 'Last updated: ' + fmt + ' ET &nbsp;·&nbsp; <a href="https://energychoice.ohio.gov" target="_blank" rel="noopener" style="color:#6b7280;">Source: energychoice.ohio.gov</a>';
