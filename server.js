@@ -357,7 +357,7 @@ const server = http.createServer(async (req, res) => {
       res.end(JSON.stringify({
         totalOffers: Number(r.total_offers),
         uniqueSuppliers: Number(r.unique_suppliers),
-        scrapedDate: today,
+        scrapedDate: latest,
       }));
     } catch (err) {
       res.writeHead(500, allHeaders());
