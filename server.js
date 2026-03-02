@@ -144,6 +144,20 @@ pool.query(`
   );
 `).then(() => console.log('[db] rate_events table ok')).catch(e => console.error('[db] rate_events migration error:', e.message));
 
+pool.query(`
+  CREATE TABLE IF NOT EXISTS sco_rates (
+    id SERIAL PRIMARY KEY,
+    scraped_date TEXT NOT NULL,
+    territory_id INTEGER NOT NULL,
+    category TEXT NOT NULL,
+    rate_code TEXT NOT NULL DEFAULT '1',
+    default_rate REAL,
+    default_rate_text TEXT,
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(scraped_date, territory_id, category, rate_code)
+  );
+`).then(() => console.log('[db] sco_rates table ok')).catch(e => console.error('[db] sco_rates migration error:', e.message));
+
 function allHeaders(headers = {}) {
   return {
     'Access-Control-Allow-Origin': '*',
@@ -422,13 +436,29 @@ const server = http.createServer(async (req, res) => {
           offerId: o.offer_id,
         }));
 
+        // Look up SCO rate from sco_rates table
+        let scoRate = null, scoText = null;
+        try {
+          const { rows: scoRows } = await pool.query(`
+            SELECT default_rate, default_rate_text FROM sco_rates
+            WHERE territory_id = $1 AND category = $2 AND rate_code = $3
+            ORDER BY scraped_date DESC LIMIT 1
+          `, [territory, category, rateCode]);
+          if (scoRows.length > 0) {
+            scoRate = scoRows[0].default_rate;
+            scoText = scoRows[0].default_rate_text;
+          }
+        } catch (scoErr) {
+          console.error('[api] SCO lookup error:', scoErr.message);
+        }
+
         const result = {
           territoryId: territory,
           category,
           rateCode,
           scrapedAt: bestDate,
-          defaultRate: null,
-          defaultRateText: null,
+          defaultRate: scoRate,
+          defaultRateText: scoText,
           suppliers,
           totalCount: suppliers.length,
           isMCFConverted: isMCF,
@@ -645,6 +675,24 @@ const server = http.createServer(async (req, res) => {
           const today = new Date().toISOString().slice(0, 10);
           offersStored = await insertSupplierOffers(today, current);
           console.log(`[cron] Stored ${offersStored} offers for ${today}`);
+
+          // Store SCO/default rates per territory
+          for (const page of current) {
+            if (page.defaultRate != null) {
+              try {
+                await pool.query(`
+                  INSERT INTO sco_rates (scraped_date, territory_id, category, rate_code, default_rate, default_rate_text)
+                  VALUES ($1, $2, $3, $4, $5, $6)
+                  ON CONFLICT (scraped_date, territory_id, category, rate_code) DO UPDATE SET
+                    default_rate = EXCLUDED.default_rate,
+                    default_rate_text = EXCLUDED.default_rate_text,
+                    updated_at = NOW()
+                `, [today, page.territoryId, page.category, page.rateCode, page.defaultRate, page.defaultRateText]);
+              } catch (scoErr) {
+                console.error(`[cron] WARNING: SCO rate insert failed for territory ${page.territoryId}:`, scoErr.message);
+              }
+            }
+          }
         } catch (err) {
           console.error('[cron] WARNING: Failed to store offers:', err.message);
           errors.push(`Offer insert: ${err.message}`);
