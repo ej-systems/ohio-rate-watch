@@ -568,9 +568,10 @@
           <span>$63.59</span>
         </div>
         <div style="padding:12px 20px;font-size:0.78rem;background:#f0fdf4;border-top:1px solid #bbf7d0;">
-          <strong style="color:#166534;">If still on default SCO rate ($1.071/ccf):</strong><br>
-          118 ccf × $1.071 = $126.38 + tax ≈ <strong style="color:#dc2626;">$133.88</strong><br>
-          vs. $63.59 on this plan — <strong style="color:#16a34a;">saving ~$70 this month alone</strong>
+          <strong style="color:#166534;">Example: At a winter SCO rate of $1.07/ccf:</strong><br>
+          118 ccf × $1.07 = $126.26 + tax ≈ <strong style="color:#dc2626;">$133.76</strong><br>
+          vs. $63.59 on a fixed plan — <strong style="color:#16a34a;">saving ~$70 that month</strong>
+          <br><span style="font-size:0.72rem;color:#6b7280;">(SCO rates change monthly — check the rate table above for current rates)</span>
         </div>
       </div>
 
@@ -924,10 +925,10 @@ function shareSite() {
 
 <script>
 const TERRITORY_INFO = {
-  8:  { name: 'Columbia Gas of Ohio',    sco: 1.071, scoLabel: '$1.071/ccf (Feb 2026 SCO)' },
-  1:  { name: 'Enbridge Gas Ohio',       sco: 0.796, scoLabel: '$0.796/ccf equiv. (Feb 2026 SCO, converted from MCF)' },
-  11: { name: 'CenterPoint Energy Ohio', sco: 1.020, scoLabel: '$1.020/ccf (Feb 2026 SCO)' },
-  10: { name: 'Duke Energy Ohio',        sco: null,  scoLabel: 'GCR rate (moving to SCO April 2026)' },
+  8:  { name: 'Columbia Gas of Ohio',    sco: null, scoLabel: '' },
+  1:  { name: 'Enbridge Gas Ohio',       sco: null, scoLabel: '' },
+  11: { name: 'CenterPoint Energy Ohio', sco: null, scoLabel: '' },
+  10: { name: 'Duke Energy Ohio',        sco: null, scoLabel: 'GCR rate (moving to SCO April 2026)' },
 };
 
 let currentTerritory = 8;
@@ -972,6 +973,15 @@ async function renderTerritory(tid) {
   }
 
   const data = ratesCache[cacheKey];
+
+  // Use SCO rate from API if available, fall back to hardcoded
+  const apiSco = data.defaultRate || null;
+  const apiScoText = data.defaultRateText || '';
+  if (apiSco) {
+    info.sco = apiSco;
+    info.scoLabel = '$' + apiSco.toFixed(4).replace(/0+$/, '').replace(/\.$/, '') + '/ccf' + (apiScoText ? ' (' + apiScoText + ')' : ' (SCO)');
+  }
+
   const suppliers = (data.suppliers || [])
     .filter(s => s.price && s.price > 0)
     .sort((a, b) => {
@@ -987,9 +997,9 @@ async function renderTerritory(tid) {
     const bestFixed = suppliers.find(s => s.rateType === 'fixed' && !s.introPrice && !/bundle|electric.*gas|gas.*electric/i.test((s.offerDetails || '') + ' ' + (s.promoDetails || '')));
     const savings = bestFixed ? Math.round((1 - bestFixed.price / info.sco) * 100) : null;
     scoBar.innerHTML = '<strong>' + info.name + '</strong> default rate: <strong>' + info.scoLabel + '</strong>' +
-      (savings ? ' \u2014 best fixed rate is <strong>' + savings + '% less</strong>' : '');
+      (savings && savings > 0 ? ' \u2014 best fixed rate is <strong>' + savings + '% less</strong>' : '');
   } else {
-    scoBar.innerHTML = '<strong>' + info.name + '</strong>: ' + info.scoLabel;
+    scoBar.innerHTML = '<strong>' + info.name + '</strong>: ' + (info.scoLabel || 'SCO rate not available');
   }
 
   // Build rows — old card-style layout
@@ -1210,7 +1220,7 @@ document.addEventListener('DOMContentLoaded', function() {
     .then(r => r.json())
     .then(d => {
       const savingsEl = document.getElementById('stat-savings');
-      const sco = 1.071; // Columbia Gas SCO
+      const sco = d.defaultRate || 1.071; // Use API SCO, fallback to last known
       const best = (d.suppliers || []).find(s =>
         s.rateType === 'fixed' && s.price > 0 &&
         !/bundle|electric.*gas|gas.*electric/i.test((s.offerDetails || '') + ' ' + (s.promoDetails || ''))
