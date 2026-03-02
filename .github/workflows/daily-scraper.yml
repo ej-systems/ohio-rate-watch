@@ -2,8 +2,9 @@ name: Daily Rate Scraper
 
 on:
   schedule:
-    # Run at 2 AM UTC daily (same as Vultr cron)
-    - cron: '0 2 * * *'
+    # Run every 6 hours: 2 AM, 8 AM, 2 PM, 8 PM UTC
+    # (9 PM, 3 AM, 9 AM, 3 PM ET)
+    - cron: '0 2,8,14,20 * * *'
   workflow_dispatch: # Allow manual trigger
 
 jobs:
