@@ -1013,6 +1013,32 @@ const server = http.createServer(async (req, res) => {
     filePath = filePath + '.html';
   }
 
+  // GET /api/admin/subscriber-stats (protected)
+  if (req.method === 'GET' && url.pathname === '/api/admin/subscriber-stats') {
+    const secret = req.headers['x-cron-secret'];
+    if (secret !== process.env.CRON_SECRET) {
+      res.writeHead(403, allHeaders()); res.end(JSON.stringify({ error: 'Forbidden' })); return;
+    }
+    try {
+      const { rows } = await pool.query(`
+        SELECT
+          COUNT(*) as total,
+          COUNT(*) FILTER (WHERE confirmed=true) as confirmed,
+          COUNT(*) FILTER (WHERE confirmed=false) as pending
+        FROM subscribers
+      `);
+      const { rows: byTerritory } = await pool.query(`
+        SELECT COALESCE(territory,'unknown') as territory, COUNT(*) as cnt
+        FROM subscribers WHERE confirmed=true GROUP BY territory ORDER BY cnt DESC
+      `);
+      res.writeHead(200, allHeaders());
+      res.end(JSON.stringify({ ...rows[0], byTerritory }));
+    } catch (err) {
+      res.writeHead(500, allHeaders()); res.end(JSON.stringify({ error: err.message }));
+    }
+    return;
+  }
+
   // GET /api/scrape-status
   if (req.method === 'GET' && url.pathname === '/api/scrape-status') {
     try {
