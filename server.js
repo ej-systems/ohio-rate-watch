@@ -45,7 +45,11 @@ if (!fs.existsSync(LOG_FILE)) {
   fs.writeFileSync(LOG_FILE, 'timestamp,email,zip\n');
 }
 
-const pool = new pg.Pool({ connectionString: DATABASE_URL });
+const pool = new pg.Pool({ connectionString: DATABASE_URL, max: 5 });
+
+// Share pool with history-store module
+import { setPool as setHistoryPool } from './lib/history-store.js';
+setHistoryPool(pool);
 
 // Load ZIP → territory mapping
 const zipTerritoryMap = JSON.parse(readFileSync(path.join(__dirname, 'zip-territory.json'), 'utf8'));
@@ -108,6 +112,7 @@ pool.query(`
     scraped_at TIMESTAMPTZ DEFAULT NOW(),
     UNIQUE(report_date, city)
   );
+  CREATE INDEX IF NOT EXISTS idx_city_bill_history_city ON city_bill_history(LOWER(city));
 `).then(() => console.log('[db] city_bill_history table ok')).catch(e => console.error('[db] city_bill_history migration error:', e.message));
 
 pool.query(`
@@ -117,13 +122,16 @@ pool.query(`
     finished_at TIMESTAMPTZ,
     status TEXT NOT NULL DEFAULT 'running',
     row_count INTEGER,
-    territory_id INTEGER,
-    category TEXT,
-    rate_code TEXT,
-    error_message TEXT,
-    payload_hash TEXT
+    error_message TEXT
   );
 `).then(() => console.log('[db] scrape_runs table ok')).catch(e => console.error('[db] scrape_runs migration error:', e.message));
+
+pool.query(`
+  ALTER TABLE scrape_runs DROP COLUMN IF EXISTS territory_id;
+  ALTER TABLE scrape_runs DROP COLUMN IF EXISTS category;
+  ALTER TABLE scrape_runs DROP COLUMN IF EXISTS rate_code;
+  ALTER TABLE scrape_runs DROP COLUMN IF EXISTS payload_hash;
+`).then(() => console.log('[db] scrape_runs cleanup ok')).catch(e => console.error('[db] scrape_runs cleanup error:', e.message));
 
 pool.query(`
   CREATE TABLE IF NOT EXISTS rate_events (
@@ -645,6 +653,7 @@ const server = http.createServer(async (req, res) => {
       const startTime = Date.now();
       const errors = [];
       let pagesScraped = 0, snapshotRows = 0, offersStored = 0;
+      let cityBillCount = 0, trendCount = 0;
       let significantChanges = 0, totalChanges = 0;
       let dbSnapshots = '?', dbOffers = '?', dbHistory = '?';
 
@@ -712,7 +721,6 @@ const server = http.createServer(async (req, res) => {
         }
 
         // Scrape PUCO city bills
-        let cityBillCount = 0;
         try {
           const COMPANY_TO_KEY = {
             'Columbia Gas of Ohio': 'columbia',
@@ -772,7 +780,6 @@ const server = http.createServer(async (req, res) => {
         }
 
         // Scrape PUCO ScheduleTrends (historical bill data)
-        let trendCount = 0;
         try {
           const trendRes = await fetch('https://analytics.das.ohio.gov/t/PUCPUB/views/UtilityRateSurvey/ScheduleTrends.csv');
           if (!trendRes.ok) throw new Error(`ScheduleTrends: ${trendRes.status}`);
@@ -858,6 +865,15 @@ const server = http.createServer(async (req, res) => {
 
         // Update baseline
         fs.writeFileSync(baselineFile, JSON.stringify(current, null, 2));
+
+        // Prune rate_snapshots older than 90 days
+        try {
+          const { rowCount } = await pool.query(`DELETE FROM rate_snapshots WHERE scraped_at::date < (CURRENT_DATE - INTERVAL '90 days')`);
+          if (rowCount > 0) console.log(`[cron] Pruned ${rowCount} rate_snapshots older than 90 days`);
+        } catch (err) {
+          console.error('[cron] WARNING: Snapshot cleanup failed:', err.message);
+        }
+
         console.log('[cron] Daily check complete');
       } catch (err) {
         console.error('[cron] FATAL:', err.message);
@@ -880,8 +896,8 @@ const server = http.createServer(async (req, res) => {
             { name: '📄 Pages Scraped', value: `${pagesScraped}`, inline: true },
             { name: '📸 Snapshot Rows Added', value: `${snapshotRows.toLocaleString()}`, inline: true },
             { name: '📋 Offers Stored', value: `${offersStored.toLocaleString()}`, inline: true },
-            { name: '🏘️ City Bills', value: `${typeof cityBillCount !== 'undefined' ? cityBillCount : 'n/a'}`, inline: true },
-            { name: '📈 Bill Trends', value: `${typeof trendCount !== 'undefined' ? trendCount : 'n/a'}`, inline: true },
+            { name: '🏘️ City Bills', value: `${cityBillCount}`, inline: true },
+            { name: '📈 Bill Trends', value: `${trendCount}`, inline: true },
             { name: '🔄 Rate Changes', value: `${totalChanges} total, ${significantChanges} significant`, inline: true },
             { name: '🗃️ DB: rate_snapshots', value: dbSnapshots, inline: true },
             { name: '🗃️ DB: supplier_offers', value: dbOffers, inline: true },
@@ -999,6 +1015,152 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // ---- Combined City API ----
+  if (req.method === 'GET' && url.pathname.startsWith('/api/city/')) {
+    try {
+      const slug = decodeURIComponent(url.pathname.split('/api/city/')[1] || '');
+      const cityName = slug.replace(/-/g, ' ');
+      if (!cityName) {
+        res.writeHead(400, allHeaders());
+        res.end(JSON.stringify({ error: 'City name required' }));
+        return;
+      }
+
+      // 1. Get latest city_bills rows for this city
+      const { rows: billRows } = await pool.query(`
+        SELECT city, county, utility_key, company_name, gas_bill_total, gas_bill_prior,
+               gas_pct_change, gas_supply_cost, gas_per_mcf, report_month
+        FROM city_bills
+        WHERE LOWER(city) = LOWER($1)
+          AND report_month = (SELECT MAX(report_month) FROM city_bills WHERE LOWER(city) = LOWER($1))
+        ORDER BY utility_key
+      `, [cityName]);
+
+      if (billRows.length === 0) {
+        res.writeHead(404, allHeaders());
+        res.end(JSON.stringify({ error: 'City not found' }));
+        return;
+      }
+
+      const reportMonth = billRows[0].report_month;
+      const canonicalCity = billRows[0].city;
+      const county = billRows[0].county;
+
+      // 2. For each utility, get best offers and SCO rate
+      const utilities = [];
+      for (const row of billRows) {
+        const territoryId = TERRITORY_IDS[row.utility_key];
+        if (!territoryId) continue;
+
+        // Best 5 fixed offers (non-intro, price > 0)
+        const { rows: offers } = await pool.query(`
+          SELECT supplier_name, price, term_months, sign_up_url, etf
+          FROM supplier_offers
+          WHERE territory_id = $1
+            AND category = 'NaturalGas'
+            AND rate_code = '1'
+            AND rate_type = 'fixed'
+            AND price > 0
+            AND (is_intro = FALSE OR is_intro IS NULL)
+            AND scraped_date = (SELECT MAX(scraped_date) FROM supplier_offers WHERE territory_id = $1 AND category = 'NaturalGas')
+          ORDER BY price ASC
+          LIMIT 5
+        `, [territoryId]);
+
+        // Convert Enbridge MCF prices to CCF
+        const convertedOffers = offers.map(o => ({
+          supplierName: o.supplier_name,
+          price: territoryId === 1 ? Math.round((o.price / 10) * 10000) / 10000 : o.price,
+          termMonths: o.term_months,
+          signUpUrl: o.sign_up_url,
+          etf: o.etf || 0,
+        }));
+
+        // SCO rate
+        const { rows: scoRows } = await pool.query(`
+          SELECT default_rate, default_rate_text
+          FROM sco_rates
+          WHERE territory_id = $1 AND category = 'NaturalGas' AND rate_code = '1'
+          AND scraped_date = (SELECT MAX(scraped_date) FROM sco_rates WHERE territory_id = $1 AND category = 'NaturalGas')
+          LIMIT 1
+        `, [territoryId]);
+
+        const sco = scoRows[0] || {};
+
+        utilities.push({
+          utilityKey: row.utility_key,
+          utilityName: row.company_name || TERRITORY_NAMES[row.utility_key] || row.utility_key,
+          territoryId,
+          gasBillTotal: row.gas_bill_total,
+          gasBillPrior: row.gas_bill_prior,
+          gasPctChange: row.gas_pct_change,
+          gasSupplyCost: row.gas_supply_cost,
+          gasPerMcf: row.gas_per_mcf,
+          scoRate: sco.default_rate || null,
+          scoRateText: sco.default_rate_text || null,
+          bestOffers: convertedOffers,
+        });
+      }
+
+      res.writeHead(200, allHeaders({ 'Cache-Control': 'public, max-age=3600' }));
+      res.end(JSON.stringify({
+        city: canonicalCity,
+        county,
+        reportMonth,
+        utilities,
+        scrapedAt: new Date().toISOString().slice(0, 10),
+      }));
+    } catch (err) {
+      console.error('[api/city] error:', err.message);
+      res.writeHead(500, allHeaders());
+      res.end(JSON.stringify({ error: err.message }));
+    }
+    return;
+  }
+
+  // ---- City landing page route ----
+  if (req.method === 'GET' && url.pathname.startsWith('/city/') && !url.pathname.startsWith('/city-')) {
+    try {
+      const cityHtml = readFileSync(path.join(__dirname, 'city.html'));
+      res.writeHead(200, allHeaders({ 'Content-Type': 'text/html', 'Cache-Control': 'public, max-age=3600' }));
+      res.end(cityHtml);
+    } catch (err) {
+      res.writeHead(500, allHeaders({ 'Content-Type': 'text/html' }));
+      res.end('<h1>Server Error</h1>');
+    }
+    return;
+  }
+
+  // ---- Dynamic Sitemap ----
+  if (req.method === 'GET' && url.pathname === '/sitemap.xml') {
+    try {
+      const { rows } = await pool.query(`
+        SELECT DISTINCT LOWER(city) as city
+        FROM city_bills
+        WHERE report_month = (SELECT MAX(report_month) FROM city_bills)
+        ORDER BY city
+      `);
+      const today = new Date().toISOString().slice(0, 10);
+      const staticPages = ['', '/learn', '/methodology', '/calculator', '/cities'];
+      let xml = '<?xml version="1.0" encoding="UTF-8"?>\n';
+      xml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n';
+      for (const p of staticPages) {
+        xml += `  <url><loc>https://ohioratewatch.com${p}</loc><lastmod>${today}</lastmod><priority>1.0</priority><changefreq>daily</changefreq></url>\n`;
+      }
+      for (const r of rows) {
+        const slug = r.city.replace(/\s+/g, '-');
+        xml += `  <url><loc>https://ohioratewatch.com/city/${slug}</loc><lastmod>${today}</lastmod><priority>0.7</priority><changefreq>weekly</changefreq></url>\n`;
+      }
+      xml += '</urlset>';
+      res.writeHead(200, allHeaders({ 'Content-Type': 'application/xml', 'Cache-Control': 'public, max-age=86400' }));
+      res.end(xml);
+      return;
+    } catch (err) {
+      // Fall through to static file serving (may have a static sitemap.xml)
+      console.error('[sitemap] error:', err.message);
+    }
+  }
+
   // Static file serving
   const MIME_TYPES = {
     '.html': 'text/html', '.css': 'text/css', '.js': 'text/javascript',
@@ -1007,7 +1169,13 @@ const server = http.createServer(async (req, res) => {
     '.xml': 'application/xml', '.txt': 'text/plain', '.geojson': 'application/json',
   };
 
-  let filePath = path.join(__dirname, url.pathname === '/' ? 'index.html' : url.pathname);
+  let filePath = path.resolve(path.join(__dirname, url.pathname === '/' ? 'index.html' : url.pathname));
+  // Path traversal guard
+  if (!filePath.startsWith(__dirname)) {
+    res.writeHead(403, allHeaders());
+    res.end(JSON.stringify({ error: 'Forbidden' }));
+    return;
+  }
   // Try .html extension for extensionless paths
   if (!path.extname(filePath) && existsSync(filePath + '.html')) {
     filePath = filePath + '.html';
@@ -1015,8 +1183,12 @@ const server = http.createServer(async (req, res) => {
 
   // GET /api/admin/subscriber-stats (protected)
   if (req.method === 'GET' && url.pathname === '/api/admin/subscriber-stats') {
-    const secret = req.headers['x-cron-secret'];
-    if (secret !== process.env.CRON_SECRET) {
+    const secret = req.headers['x-cron-secret'] || '';
+    const cronSecret = process.env.CRON_SECRET;
+    const secretValid = cronSecret &&
+      secret.length === cronSecret.length &&
+      crypto.timingSafeEqual(Buffer.from(secret), Buffer.from(cronSecret));
+    if (!secretValid) {
       res.writeHead(403, allHeaders()); res.end(JSON.stringify({ error: 'Forbidden' })); return;
     }
     try {

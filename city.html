@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title id="page-title">Gas Rates — Ohio Rate Watch</title>
+<meta name="description" id="page-desc" content="Compare natural gas rates and see how much you could save.">
+<link rel="canonical" id="page-canonical" href="https://ohioratewatch.com/">
+<meta property="og:type" content="website">
+<meta property="og:url" id="og-url" content="">
+<meta property="og:title" id="og-title" content="">
+<meta property="og:description" id="og-desc" content="">
+<meta property="og:image" content="https://ohioratewatch.com/og-image.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" id="tw-title" content="">
+<meta name="twitter:description" id="tw-desc" content="">
+<meta name="twitter:image" content="https://ohioratewatch.com/og-image.png">
+<script id="ld-json" type="application/ld+json">{}</script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f8f9fa; color: #1a1a2e; }
+
+  /* NAV */
+  nav { background: #fff; border-bottom: 2px solid #e8f4f8; padding: 0 24px; display: flex; align-items: center; justify-content: space-between; height: 64px; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+  .logo { font-size: 1.3rem; font-weight: 800; color: #1565c0; letter-spacing: -0.5px; }
+  .logo span { color: #e53935; }
+  nav a { color: #555; text-decoration: none; font-size: 0.9rem; font-weight: 500; }
+  nav a:hover { color: #1565c0; }
+
+  /* HERO */
+  .hero { background: linear-gradient(135deg, #1565c0 0%, #0d47a1 100%); color: #fff; padding: 56px 24px 64px; text-align: center; }
+  .hero h1 { font-size: clamp(1.8rem, 4vw, 2.8rem); font-weight: 900; line-height: 1.15; max-width: 780px; margin: 0 auto 12px; }
+  .hero-sub { font-size: 1.1rem; opacity: 0.9; max-width: 600px; margin: 0 auto; }
+  .hero-meta { display: flex; gap: 24px; justify-content: center; flex-wrap: wrap; margin-top: 20px; font-size: 0.9rem; opacity: 0.85; }
+
+  /* SECTIONS */
+  .section { max-width: 900px; margin: 0 auto; padding: 40px 24px; }
+  .section h2 { font-size: 1.5rem; font-weight: 800; margin-bottom: 20px; color: #1a1a2e; }
+  .section h3 { font-size: 1.15rem; font-weight: 700; margin-bottom: 12px; color: #333; }
+
+  /* COMPARISON CARD */
+  .comparison-card { background: #fff; border-radius: 14px; box-shadow: 0 2px 20px rgba(0,0,0,0.08); padding: 28px; margin-bottom: 28px; }
+  .comparison-card .utility-label { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px; color: #666; font-weight: 600; margin-bottom: 8px; }
+  .comparison-grid { display: grid; grid-template-columns: 1fr auto 1fr; gap: 16px; align-items: center; margin: 16px 0; }
+  .rate-box { text-align: center; padding: 16px; border-radius: 10px; }
+  .rate-box.sco { background: #fef2f2; border: 1px solid #fca5a5; }
+  .rate-box.best { background: #f0fdf4; border: 1px solid #bbf7d0; }
+  .rate-box .label { font-size: 0.75rem; text-transform: uppercase; font-weight: 600; color: #666; margin-bottom: 4px; }
+  .rate-box .price { font-size: 1.8rem; font-weight: 900; }
+  .rate-box.sco .price { color: #c62828; }
+  .rate-box.best .price { color: #16a34a; }
+  .rate-box .unit { font-size: 0.75rem; color: #888; }
+  .vs { font-weight: 800; color: #999; font-size: 1.1rem; }
+  .savings-banner { background: #dcfce7; border: 1px solid #86efac; border-radius: 10px; padding: 16px; text-align: center; margin-top: 12px; }
+  .savings-banner .amount { font-size: 1.4rem; font-weight: 900; color: #14532d; }
+  .savings-banner .detail { font-size: 0.85rem; color: #166534; margin-top: 4px; }
+
+  /* OFFERS TABLE */
+  .offers-table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+  .offers-table th { text-align: left; font-size: 0.75rem; text-transform: uppercase; color: #888; font-weight: 600; padding: 8px 12px; border-bottom: 2px solid #e5e7eb; }
+  .offers-table td { padding: 12px; border-bottom: 1px solid #f0f0f0; font-size: 0.9rem; }
+  .offers-table tr:hover { background: #f9fafb; }
+  .price-cell { font-weight: 700; color: #16a34a; font-size: 1rem; }
+  .offer-link { color: #1565c0; font-weight: 600; text-decoration: none; white-space: nowrap; }
+  .offer-link:hover { text-decoration: underline; }
+
+  /* BILL CHANGE */
+  .bill-stat { display: inline-flex; align-items: center; gap: 6px; background: #fff; border-radius: 8px; padding: 8px 16px; font-weight: 700; font-size: 1.1rem; }
+  .bill-up { color: #c62828; }
+  .bill-down { color: #16a34a; }
+
+  /* CHART */
+  .chart-wrap { background: #fff; border-radius: 14px; box-shadow: 0 2px 20px rgba(0,0,0,0.08); padding: 28px; margin-bottom: 28px; }
+  .chart-wrap canvas { width: 100% !important; max-height: 320px; }
+
+  /* AGGREGATION */
+  .agg-card { background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 14px; padding: 24px; margin-bottom: 28px; }
+  .agg-card h3 { color: #1e40af; }
+  .agg-card .agg-detail { font-size: 0.9rem; color: #1e3a5f; line-height: 1.6; }
+  .agg-card a { color: #1565c0; font-weight: 600; }
+
+  /* HOW TO SWITCH */
+  .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; }
+  .step { background: #fff; border-radius: 14px; padding: 24px; text-align: center; box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
+  .step-num { display: inline-flex; width: 40px; height: 40px; border-radius: 50%; background: #1565c0; color: #fff; align-items: center; justify-content: center; font-weight: 800; font-size: 1.1rem; margin-bottom: 12px; }
+  .step h4 { font-size: 1rem; margin-bottom: 6px; }
+  .step p { font-size: 0.85rem; color: #666; line-height: 1.5; }
+
+  /* FOOTER CTA */
+  .footer-cta { background: linear-gradient(135deg, #1565c0 0%, #0d47a1 100%); color: #fff; padding: 48px 24px; text-align: center; }
+  .footer-cta h2 { font-size: 1.6rem; font-weight: 800; margin-bottom: 8px; }
+  .footer-cta p { opacity: 0.9; margin-bottom: 20px; }
+  .footer-cta .signup-form { display: flex; gap: 8px; max-width: 480px; margin: 0 auto; flex-wrap: wrap; justify-content: center; }
+  .footer-cta input { padding: 12px 16px; border: none; border-radius: 8px; font-size: 0.95rem; flex: 1 1 200px; min-width: 0; }
+  .footer-cta button { padding: 12px 24px; background: #e53935; color: #fff; border: none; border-radius: 8px; font-weight: 700; font-size: 0.95rem; cursor: pointer; white-space: nowrap; }
+  .footer-cta button:hover { background: #c62828; }
+
+  footer { background: #1a1a2e; color: #9ca3af; padding: 32px 24px; text-align: center; font-size: 0.82rem; line-height: 1.8; }
+  footer a { color: #60a5fa; text-decoration: none; }
+
+  .loading { text-align: center; padding: 60px 24px; color: #888; font-size: 1.1rem; }
+  .error-msg { text-align: center; padding: 60px 24px; }
+  .error-msg h2 { color: #c62828; margin-bottom: 8px; }
+  .error-msg a { color: #1565c0; }
+
+  @media (max-width: 600px) {
+    nav { padding: 0 12px; }
+    .comparison-grid { grid-template-columns: 1fr; }
+    .vs { display: none; }
+    .offers-table { font-size: 0.8rem; }
+    .offers-table th, .offers-table td { padding: 8px 6px; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="/" class="logo" style="text-decoration:none;">Ohio<span>Rate</span>Watch <span style="font-size:0.55rem;background:#f59e0b;color:#fff;padding:2px 7px;border-radius:20px;font-weight:700;letter-spacing:0.5px;vertical-align:middle;">BETA</span></a>
+  <div style="display:flex;gap:20px;align-items:center;">
+    <a href="/learn" style="color:#555;text-decoration:none;font-size:0.9rem;font-weight:500;">Learn</a>
+    <a href="/methodology" style="color:#555;text-decoration:none;font-size:0.9rem;font-weight:500;">About</a>
+    <a href="/calculator" style="color:#555;text-decoration:none;font-size:0.9rem;font-weight:500;">Calculator</a>
+    <a href="/cities" style="color:#555;text-decoration:none;font-size:0.9rem;font-weight:500;">Cities</a>
+    <a href="/#signup" style="color:#1565c0;font-weight:600;text-decoration:none;font-size:0.9rem;border:1.5px solid #1565c0;padding:6px 14px;border-radius:6px;">Get Free Alerts</a>
+  </div>
+</nav>
+
+<div id="loading" class="loading">Loading city data...</div>
+<div id="error" class="error-msg" style="display:none;"></div>
+<div id="content" style="display:none;">
+
+<!-- HERO -->
+<div class="hero">
+  <h1 id="hero-title">Gas Rates in <strong id="city-name"></strong>, Ohio</h1>
+  <p class="hero-sub" id="hero-sub"></p>
+  <div class="hero-meta">
+    <span id="hero-county"></span>
+    <span id="hero-utilities"></span>
+    <span id="hero-updated"></span>
+  </div>
+</div>
+
+<!-- UTILITY SECTIONS -->
+<div id="utility-sections" class="section"></div>
+
+<!-- BILL HISTORY CHART -->
+<div class="section">
+  <div class="chart-wrap">
+    <h2>Bill History</h2>
+    <p style="font-size:0.85rem;color:#888;margin-bottom:16px;">Average monthly gas bill over time for this city</p>
+    <canvas id="history-chart"></canvas>
+    <p id="no-chart" style="display:none;color:#888;text-align:center;padding:20px;">No historical data available yet.</p>
+  </div>
+</div>
+
+<!-- AGGREGATION PROGRAM -->
+<div id="agg-section" class="section" style="display:none;"></div>
+
+<!-- HOW TO SWITCH -->
+<div class="section">
+  <h2>How to Switch Suppliers</h2>
+  <p style="color:#666;margin-bottom:20px;">Switching is free, takes about 5 minutes, and your utility still delivers the gas. Nothing changes except your supply rate.</p>
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">1</div>
+      <h4>Choose a Supplier</h4>
+      <p>Compare rates above. Fixed rates lock in your price. Look for low $/ccf with no early termination fee.</p>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <h4>Sign Up Online</h4>
+      <p>Click "View Offer" on any plan above. You'll need your utility account number from your bill. Takes ~5 minutes.</p>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <h4>Done. That's It.</h4>
+      <p>Your utility still delivers the gas and handles emergencies. You just pay less for the supply portion of your bill.</p>
+    </div>
+  </div>
+</div>
+
+<!-- FOOTER CTA -->
+<div class="footer-cta" id="signup">
+  <h2>Get notified when rates change</h2>
+  <p>Free alerts for your area. No spam, ever.</p>
+  <form class="signup-form" id="city-signup-form">
+    <input type="email" id="signup-email" placeholder="Your email address" required>
+    <button type="submit" id="signup-btn">Get Free Alerts</button>
+  </form>
+  <div id="signup-msg" style="margin-top:12px;font-weight:600;"></div>
+</div>
+
+</div><!-- /content -->
+
+<footer>
+  <strong>OhioRateWatch.com</strong> · A project of EJ Systems LLC · Cleveland, Ohio · <a href="tel:8334317283">833.431.RATE</a><br>
+  <br>
+  <strong style="color:#e5e7eb;">Independent &amp; Non-Commercial</strong> — We do not receive commissions from suppliers. Rates are sorted by price only. No featured listings. Ever.<br>
+  <a href="/methodology">How our data works</a><br>
+  <br>
+  Rate data sourced from <a href="https://www.energychoice.ohio.gov" target="_blank">PUCO Energy Choice Ohio</a>. Not affiliated with any supplier or utility company.<br>
+  Always verify current rates, terms, and fees directly with suppliers before switching service.<br>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+<script>
+(async function() {
+  const slug = location.pathname.replace(/^\/city\//, '').replace(/\/$/, '');
+  if (!slug) { showError('No city specified.'); return; }
+
+  const cityName = decodeURIComponent(slug).replace(/-/g, ' ');
+  const displayName = cityName.replace(/\b\w/g, c => c.toUpperCase());
+
+  // Set initial title
+  document.getElementById('page-title').textContent = `Gas Rates in ${displayName}, OH — Ohio Rate Watch`;
+
+  try {
+    const res = await fetch(`/api/city/${encodeURIComponent(slug)}`);
+    if (res.status === 404) { showError(`We don't have data for "${displayName}" yet. <a href="/cities">Browse all cities</a>`); return; }
+    if (!res.ok) throw new Error('Failed to load city data');
+    const data = await res.json();
+
+    // SEO tags
+    const title = `Gas Rates in ${data.city}, OH — Ohio Rate Watch`;
+    const desc = `Compare natural gas supplier rates in ${data.city}, ${data.county} County, Ohio. See average bills, best fixed rates, and how much you could save by switching suppliers.`;
+    const url = `https://ohioratewatch.com/city/${slug}`;
+    document.getElementById('page-title').textContent = title;
+    document.getElementById('page-desc').content = desc;
+    document.getElementById('page-canonical').href = url;
+    document.getElementById('og-url').content = url;
+    document.getElementById('og-title').content = title;
+    document.getElementById('og-desc').content = desc;
+    document.getElementById('tw-title').content = title;
+    document.getElementById('tw-desc').content = desc;
+    document.getElementById('ld-json').textContent = JSON.stringify({
+      "@context": "https://schema.org",
+      "@type": "WebPage",
+      "name": title,
+      "url": url,
+      "description": desc,
+      "about": {
+        "@type": "City",
+        "name": data.city,
+        "containedInPlace": { "@type": "State", "name": "Ohio" }
+      },
+      "provider": { "@type": "Organization", "name": "EJ Systems LLC", "url": "https://ohioratewatch.com" }
+    });
+
+    // Hero
+    document.getElementById('city-name').textContent = data.city;
+    const avgBill = data.utilities.reduce((s, u) => s + (u.gasBillTotal || 0), 0) / data.utilities.length;
+    const utilNames = data.utilities.map(u => u.utilityName).join(', ');
+    document.getElementById('hero-sub').textContent = `Average gas bill: $${avgBill.toFixed(2)}/month · ${utilNames}`;
+    document.getElementById('hero-county').textContent = `${data.county} County`;
+    document.getElementById('hero-utilities').textContent = `${data.utilities.length} utilit${data.utilities.length === 1 ? 'y' : 'ies'}`;
+    document.getElementById('hero-updated').textContent = `Data: ${data.reportMonth}`;
+
+    // Build utility sections
+    const container = document.getElementById('utility-sections');
+    for (const util of data.utilities) {
+      const section = document.createElement('div');
+      section.className = 'comparison-card';
+
+      // Savings calculation: (scoRate - bestPrice) * 100 CCF
+      const bestPrice = util.bestOffers.length > 0 ? util.bestOffers[0].price : null;
+      const monthlySavings = (util.scoRate && bestPrice) ? (util.scoRate - bestPrice) * 100 : 0;
+      const annualSavings = monthlySavings * 12;
+
+      let savingsHtml = '';
+      if (monthlySavings > 0) {
+        savingsHtml = `
+          <div class="savings-banner">
+            <div class="amount">Save ~$${annualSavings.toFixed(0)}/year</div>
+            <div class="detail">$${monthlySavings.toFixed(2)}/month by switching from the default SCO rate to the best fixed rate (based on 10 MCF typical usage)</div>
+          </div>`;
+      }
+
+      let comparisonHtml = '';
+      if (util.scoRate && bestPrice) {
+        comparisonHtml = `
+          <h3>Am I Overpaying?</h3>
+          <div class="comparison-grid">
+            <div class="rate-box sco">
+              <div class="label">Default SCO Rate</div>
+              <div class="price">$${util.scoRate.toFixed(3)}</div>
+              <div class="unit">per CCF</div>
+            </div>
+            <div class="vs">vs</div>
+            <div class="rate-box best">
+              <div class="label">Best Fixed Rate</div>
+              <div class="price">$${bestPrice.toFixed(3)}</div>
+              <div class="unit">per CCF</div>
+            </div>
+          </div>
+          ${savingsHtml}`;
+      }
+
+      // Bill change indicator
+      const pctChange = util.gasPctChange;
+      const changeClass = pctChange > 0 ? 'bill-up' : 'bill-down';
+      const changeIcon = pctChange > 0 ? '&#9650;' : '&#9660;';
+      const billChangeHtml = pctChange != null
+        ? `<span class="bill-stat ${changeClass}">${changeIcon} ${Math.abs(pctChange).toFixed(1)}% vs prior month</span>`
+        : '';
+
+      // Offers table
+      let offersHtml = '';
+      if (util.bestOffers.length > 0) {
+        const rows = util.bestOffers.map(o => `
+          <tr>
+            <td>${o.supplierName}</td>
+            <td class="price-cell">$${o.price.toFixed(3)}/ccf</td>
+            <td>${o.termMonths} mo</td>
+            <td>${o.etf > 0 ? '$' + o.etf : 'None'}</td>
+            <td>${o.signUpUrl ? `<a href="${o.signUpUrl}" target="_blank" rel="noopener" class="offer-link">View Offer &#8594;</a>` : '—'}</td>
+          </tr>`).join('');
+        offersHtml = `
+          <h3 style="margin-top:24px;">Best Fixed-Rate Plans</h3>
+          <div style="overflow-x:auto;">
+          <table class="offers-table">
+            <thead><tr><th>Supplier</th><th>Price</th><th>Term</th><th>ETF</th><th></th></tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+          </div>`;
+      }
+
+      section.innerHTML = `
+        <div class="utility-label">${util.utilityName}</div>
+        <div style="display:flex;gap:20px;align-items:baseline;flex-wrap:wrap;margin-bottom:16px;">
+          <div style="font-size:1.4rem;font-weight:800;">$${(util.gasBillTotal || 0).toFixed(2)}<span style="font-size:0.8rem;color:#888;font-weight:400;">/month avg</span></div>
+          ${billChangeHtml}
+        </div>
+        ${comparisonHtml}
+        ${offersHtml}
+      `;
+      container.appendChild(section);
+    }
+
+    // Show content
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('content').style.display = 'block';
+
+    // Load bill history chart
+    loadChart(data.city);
+
+    // Load aggregation programs
+    loadAggregation(data.city, data.county, data.utilities);
+
+  } catch (err) {
+    showError('Something went wrong loading city data. <a href="/cities">Browse all cities</a>');
+    console.error(err);
+  }
+
+  // Signup form
+  document.getElementById('city-signup-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const btn = document.getElementById('signup-btn');
+    const msg = document.getElementById('signup-msg');
+    const email = document.getElementById('signup-email').value.trim();
+    if (!email) return;
+    btn.disabled = true;
+    btn.textContent = 'Signing up...';
+    try {
+      const res = await fetch('/api/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      });
+      const data = await res.json();
+      if (data.ok || data.success) {
+        msg.style.color = '#86efac';
+        msg.textContent = 'You\'re signed up! We\'ll email you when rates change.';
+        btn.textContent = 'Signed Up';
+      } else {
+        throw new Error(data.error || 'Signup failed');
+      }
+    } catch (err) {
+      msg.style.color = '#fca5a5';
+      msg.textContent = err.message || 'Something went wrong. Please try again.';
+      btn.disabled = false;
+      btn.textContent = 'Get Free Alerts';
+    }
+  });
+})();
+
+function showError(html) {
+  document.getElementById('loading').style.display = 'none';
+  const el = document.getElementById('error');
+  el.innerHTML = `<h2>City Not Found</h2><p>${html}</p>`;
+  el.style.display = 'block';
+}
+
+async function loadChart(cityName) {
+  try {
+    const res = await fetch(`/api/city-history?city=${encodeURIComponent(cityName)}`);
+    if (!res.ok) return;
+    const data = await res.json();
+    if (!data.history || data.history.length < 2) {
+      document.getElementById('no-chart').style.display = 'block';
+      document.getElementById('history-chart').style.display = 'none';
+      return;
+    }
+    const labels = data.history.map(h => h.monthLabel || h.reportDate);
+    const values = data.history.map(h => h.totalCharge);
+    new Chart(document.getElementById('history-chart'), {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [{
+          label: 'Avg Monthly Gas Bill ($)',
+          data: values,
+          borderColor: '#1565c0',
+          backgroundColor: 'rgba(21,101,192,0.08)',
+          fill: true,
+          tension: 0.3,
+          pointRadius: 3,
+          pointHoverRadius: 6,
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: { label: ctx => `$${ctx.parsed.y.toFixed(2)}` } }
+        },
+        scales: {
+          y: { beginAtZero: false, ticks: { callback: v => '$' + v } },
+          x: { ticks: { maxTicksLimit: 12 } }
+        }
+      }
+    });
+  } catch (err) {
+    console.error('Chart load error:', err);
+  }
+}
+
+async function loadAggregation(cityName, county, utilities) {
+  try {
+    const res = await fetch('/data/aggregation-programs.json');
+    if (!res.ok) return;
+    const programs = await res.json();
+    const utilKeys = utilities.map(u => u.utilityKey);
+    const cityLower = cityName.toLowerCase();
+    const countyLower = county ? county.toLowerCase() : '';
+
+    // Match by city name in program name/coverage, or by county
+    const matches = programs.filter(p => {
+      // Check territory overlap
+      const hasTerritory = p.territory.some(t => utilKeys.includes(t));
+      if (!hasTerritory) return false;
+      // Check city/county match
+      const nameMatch = p.name.toLowerCase().includes(cityLower) ||
+                        (p.coverage && p.coverage.toLowerCase().includes(cityLower)) ||
+                        (p.fullName && p.fullName.toLowerCase().includes(cityLower));
+      const countyMatch = countyLower && p.counties &&
+                          p.counties.some(c => c.toLowerCase() === countyLower);
+      return nameMatch || countyMatch;
+    });
+
+    if (matches.length === 0) return;
+
+    const section = document.getElementById('agg-section');
+    let html = '<h2>Aggregation Programs</h2><p style="color:#666;margin-bottom:16px;">Your city or county may offer a group purchasing program with negotiated rates.</p>';
+
+    for (const prog of matches) {
+      const rateStr = prog.rate ? `$${prog.rate}/${prog.rateUnit}` : 'Variable';
+      html += `
+        <div class="agg-card">
+          <h3>${prog.fullName || prog.name}</h3>
+          <div class="agg-detail">
+            <p><strong>Rate:</strong> ${rateStr}${prog.rateNote ? ` — ${prog.rateNote}` : ''}</p>
+            ${prog.supplier ? `<p><strong>Supplier:</strong> ${prog.supplier}</p>` : ''}
+            <p><strong>Coverage:</strong> ${prog.coverage || 'See program website'}</p>
+            ${prog.notes ? `<p style="margin-top:8px;font-size:0.85rem;color:#555;">${prog.notes}</p>` : ''}
+            <p style="margin-top:12px;">
+              <a href="${prog.url}" target="_blank" rel="noopener">Program Website &#8594;</a>
+              ${prog.enrollUrl ? ` · <a href="${prog.enrollUrl}" target="_blank" rel="noopener">Enroll &#8594;</a>` : ''}
+              ${prog.phone ? ` · <a href="tel:${prog.phone}">${prog.phone}</a>` : ''}
+            </p>
+          </div>
+        </div>`;
+    }
+
+    section.innerHTML = html;
+    section.style.display = 'block';
+  } catch (err) {
+    console.error('Aggregation load error:', err);
+  }
+}
+</script>
+</body>
+</html>

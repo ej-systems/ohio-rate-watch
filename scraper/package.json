@@ -4,15 +4,10 @@
   "description": "Data pipeline for Ohio Rate Watch — scrapes PUCO DIS and EIA API for rate changes",
   "type": "module",
   "scripts": {
-    "puco": "node puco-scraper.js",
-    "eia": "node eia-scraper.js",
-    "test:puco": "node puco-scraper.js --days 7"
+    "eia": "node eia-scraper.js"
   },
   "dependencies": {
-    "fast-xml-parser": "^5.4.1",
-    "playwright": "^1.41.0",
-    "playwright-extra": "^4.3.6",
-    "puppeteer-extra-plugin-stealth": "^2.11.2"
+    "fast-xml-parser": "^5.4.1"
   },
   "engines": {
     "node": ">=18.0.0"
