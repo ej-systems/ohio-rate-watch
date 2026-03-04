@@ -169,6 +169,7 @@
 <div class="savings-stat">
   <div class="big-num" id="savings-num">...</div>
   <div class="big-label">The average Ohio family could save this much per year</div>
+  <div id="savings-updated" style="font-size:0.8rem;color:#6b7280;margin-top:8px;"></div>
   <div class="big-link"><a href="/calculator">Calculate your personal savings &rarr;</a></div>
 </div>
 
@@ -422,6 +423,10 @@ document.getElementById('footer-form').addEventListener('submit', (e) => {
       document.getElementById('savings-num').textContent = '$' + data.averageAnnualSavings.toLocaleString() + '/year';
     } else {
       document.getElementById('savings-num').textContent = '$0';
+    }
+    if (data.lastUpdated) {
+      const d = new Date(data.lastUpdated + 'T00:00:00');
+      document.getElementById('savings-updated').textContent = 'Rates updated ' + d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
     }
   } catch (e) {
     document.getElementById('savings-num').textContent = '—';

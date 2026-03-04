@@ -82,7 +82,12 @@ pool.query(`
     UNIQUE(email)
   );
   CREATE INDEX IF NOT EXISTS idx_subscribers_territory ON subscribers(territory) WHERE confirmed = TRUE;
-`).then(() => console.log('[db] subscribers table ok')).catch(e => console.error('[db] subscribers migration error:', e.message));
+`).then(() => console.log('[db] subscribers table ok'))
+  .then(() => pool.query(`
+    ALTER TABLE subscribers ADD COLUMN IF NOT EXISTS contract_expires DATE;
+  `))
+  .then(() => console.log('[db] subscribers contract_expires migration ok'))
+  .catch(e => console.error('[db] subscribers migration error:', e.message));
 
 pool.query(`
   CREATE TABLE IF NOT EXISTS city_bills (
@@ -447,7 +452,8 @@ const server = http.createServer(async (req, res) => {
         if (annualSavings > 0) weightedSavings += annualSavings * t.weight;
       }
 
-      const result = { averageAnnualSavings: Math.round(weightedSavings) };
+      const { rows: updRows } = await pool.query(`SELECT MAX(scraped_date)::text AS latest FROM supplier_offers WHERE category = 'NaturalGas'`);
+      const result = { averageAnnualSavings: Math.round(weightedSavings), lastUpdated: updRows[0]?.latest || null };
       savingsSummaryCache = { ts: now, data: result };
       res.writeHead(200, { ...allHeaders(), 'Cache-Control': 'public, max-age=3600' });
       res.end(JSON.stringify(result));
@@ -584,7 +590,7 @@ const server = http.createServer(async (req, res) => {
           return;
         }
 
-        const { email, zip, current_rate, min_savings_pct } = JSON.parse(body);
+        const { email, zip, min_savings_pct, contract_expires } = JSON.parse(body);
 
         if (!email || !email.includes('@') || !email.includes('.')) {
           res.writeHead(400, allHeaders());
@@ -594,29 +600,29 @@ const server = http.createServer(async (req, res) => {
 
         const cleanEmail = email.toLowerCase().trim();
         const cleanZip = zip?.trim() || null;
-        const rate = current_rate ? parseFloat(current_rate) : null;
         const minPct = min_savings_pct ? parseInt(min_savings_pct) : 15;
+        const contractDate = contract_expires || null; // ISO date string e.g. "2026-12-01"
 
-        // ZIP → territory lookup
-        const territory = cleanZip ? (zipTerritoryMap[cleanZip] || null) : null;
-        const territoryId = territory ? (TERRITORY_IDS[territory] || null) : null;
+        // ZIP → territory lookup — default to Columbia Gas if ZIP not recognized
+        const territory = cleanZip ? (zipTerritoryMap[cleanZip] || 'columbia') : 'columbia';
+        const territoryId = TERRITORY_IDS[territory] || 8;
 
         const unsubToken = crypto.randomUUID();
         const confirmToken = crypto.randomUUID();
 
         // Insert into DB
         await pool.query(`
-          INSERT INTO subscribers (email, zip, territory, territory_id, current_rate, min_savings_pct, unsubscribe_token, confirm_token)
+          INSERT INTO subscribers (email, zip, territory, territory_id, min_savings_pct, unsubscribe_token, confirm_token, contract_expires)
           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
           ON CONFLICT (email) DO UPDATE SET
             zip = COALESCE(EXCLUDED.zip, subscribers.zip),
             territory = COALESCE(EXCLUDED.territory, subscribers.territory),
             territory_id = COALESCE(EXCLUDED.territory_id, subscribers.territory_id),
-            current_rate = COALESCE(EXCLUDED.current_rate, subscribers.current_rate),
             min_savings_pct = EXCLUDED.min_savings_pct,
+            contract_expires = COALESCE(EXCLUDED.contract_expires, subscribers.contract_expires),
             confirm_token = CASE WHEN subscribers.confirmed THEN subscribers.confirm_token ELSE EXCLUDED.confirm_token END,
             confirmed = subscribers.confirmed
-        `, [cleanEmail, cleanZip, territory, territoryId, rate, minPct, unsubToken, confirmToken]);
+        `, [cleanEmail, cleanZip, territory, territoryId, minPct, unsubToken, confirmToken, contractDate]);
 
         // Get the confirm_token (may differ if already confirmed)
         const { rows } = await pool.query('SELECT confirm_token, confirmed FROM subscribers WHERE email = $1', [cleanEmail]);
@@ -645,7 +651,7 @@ const server = http.createServer(async (req, res) => {
         await sendEmail(
           'hello@ohioratewatch.com',
           `New signup: ${cleanEmail}${cleanZip ? ` (${cleanZip})` : ''}`,
-          `<p>New signup:<br><strong>${cleanEmail}</strong>${cleanZip ? `<br>Zip: ${cleanZip}` : ''}${territory ? `<br>Territory: ${territory}` : ''}${rate ? `<br>Current rate: $${rate}/ccf` : ''}<br>${new Date().toLocaleString('en-US', { timeZone: 'America/New_York' })} ET</p>`
+          `<p>New signup:<br><strong>${cleanEmail}</strong>${cleanZip ? `<br>Zip: ${cleanZip}` : ''}<br>Territory: ${territory}${contractDate ? `<br>Contract expires: ${contractDate}` : ''}<br>${new Date().toLocaleString('en-US', { timeZone: 'America/New_York' })} ET</p>`
         );
 
         // CSV backup
@@ -669,8 +675,33 @@ const server = http.createServer(async (req, res) => {
     const token = url.searchParams.get('token');
     let html;
     if (token) {
-      const { rowCount } = await pool.query('UPDATE subscribers SET confirmed = TRUE, confirm_token = NULL WHERE confirm_token = $1', [token]);
-      if (rowCount > 0) {
+      const { rows: confirmedRows } = await pool.query('UPDATE subscribers SET confirmed = TRUE, confirm_token = NULL WHERE confirm_token = $1 RETURNING email, territory, unsubscribe_token', [token]);
+      if (confirmedRows.length > 0) {
+        // Send welcome email (fire-and-forget)
+        {
+          const confirmed = confirmedRows[0];
+          const utilityName = confirmed.territory ? (TERRITORY_NAMES[confirmed.territory] || confirmed.territory) : 'your area';
+          const unsubUrl = `https://ohioratewatch.com/unsubscribe?token=${confirmed.unsubscribe_token}`;
+          sendEmail(confirmed.email, 'Welcome to Ohio Rate Watch', `
+            <div style="font-family:-apple-system,sans-serif;max-width:560px;margin:0 auto;padding:32px 24px;">
+              <img src="https://ohioratewatch.com/logo.png" alt="Ohio Rate Watch" style="height:40px;margin-bottom:24px;" onerror="this.style.display='none'">
+              <h2 style="color:#1565c0;margin-bottom:8px;">You're all set!</h2>
+              <p style="color:#444;line-height:1.6;">We'll watch <strong>${utilityName}</strong> gas rates for you every day. Here's what to expect:</p>
+              <ul style="color:#444;line-height:1.8;">
+                <li>We check rates daily against the default rate most Ohioans pay</li>
+                <li>You'll only hear from us when savings are 15%+ — no spam</li>
+                <li>Emails show savings in monthly dollars so it's easy to compare</li>
+              </ul>
+              <p style="color:#444;line-height:1.6;">In the meantime, <a href="https://ohioratewatch.com" style="color:#1565c0;font-weight:600;">check current rates</a> anytime.</p>
+              <p style="color:#999;font-size:0.78rem;margin-top:32px;border-top:1px solid #eee;padding-top:16px;">
+                Ohio Rate Watch · A project of EJ Systems LLC · Cleveland, Ohio<br>
+                <a href="tel:8334317283" style="color:#1565c0;">833.431.RATE</a> ·
+                <a href="https://ohioratewatch.com" style="color:#1565c0;">ohioratewatch.com</a> ·
+                <a href="${unsubUrl}" style="color:#999;">Unsubscribe</a>
+              </p>
+            </div>
+          `).catch(err => console.error('[welcome-email] Failed:', err.message));
+        }
         html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Confirmed — Ohio Rate Watch</title></head><body style="font-family:-apple-system,sans-serif;display:flex;justify-content:center;align-items:center;min-height:100vh;background:#f8f9fa;margin:0;"><div style="background:#fff;border-radius:14px;padding:48px 40px;max-width:480px;text-align:center;box-shadow:0 2px 20px rgba(0,0,0,0.08);"><div style="font-size:3rem;margin-bottom:16px;">✅</div><h1 style="color:#1565c0;font-size:1.5rem;margin-bottom:12px;">You're confirmed!</h1><p style="color:#555;line-height:1.6;margin-bottom:24px;">We'll email you when rates drop in your area. No spam, ever.</p><a href="https://ohioratewatch.com" style="display:inline-block;background:#1565c0;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:700;">← Back to Ohio Rate Watch</a></div></body></html>`;
       } else {
         html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Invalid Link — Ohio Rate Watch</title></head><body style="font-family:-apple-system,sans-serif;display:flex;justify-content:center;align-items:center;min-height:100vh;background:#f8f9fa;margin:0;"><div style="background:#fff;border-radius:14px;padding:48px 40px;max-width:480px;text-align:center;box-shadow:0 2px 20px rgba(0,0,0,0.08);"><h1 style="color:#666;font-size:1.3rem;margin-bottom:12px;">This link has already been used or is invalid.</h1><p style="color:#999;margin-bottom:24px;">If you've already confirmed, you're all set!</p><a href="https://ohioratewatch.com" style="display:inline-block;background:#1565c0;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:700;">← Back to Ohio Rate Watch</a></div></body></html>`;
@@ -1185,13 +1216,19 @@ const server = http.createServer(async (req, res) => {
         });
       }
 
+      // Find most recent supplier_offers scraped_date for the "last updated" display
+      const { rows: latestDateRows } = await pool.query(`
+        SELECT MAX(scraped_date)::text AS latest FROM supplier_offers WHERE category = 'NaturalGas'
+      `);
+      const ratesUpdated = latestDateRows[0]?.latest || new Date().toISOString().slice(0, 10);
+
       res.writeHead(200, allHeaders({ 'Cache-Control': 'public, max-age=3600' }));
       res.end(JSON.stringify({
         city: canonicalCity,
         county,
         reportMonth,
         utilities,
-        scrapedAt: new Date().toISOString().slice(0, 10),
+        ratesUpdated,
       }));
     } catch (err) {
       console.error('[api/city] error:', err.message);

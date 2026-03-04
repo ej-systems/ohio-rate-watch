@@ -254,7 +254,12 @@ function toMonthly(ratePerCCF) {
     const avgBill = data.utilities.reduce((s, u) => s + (u.gasBillTotal || 0), 0) / data.utilities.length;
     document.getElementById('hero-sub').textContent = `The average gas bill here is ~$${Math.round(avgBill)}/month`;
     document.getElementById('hero-county').textContent = `${data.county} County`;
-    document.getElementById('hero-updated').textContent = `Data: ${data.reportMonth}`;
+    if (data.ratesUpdated) {
+      const d = new Date(data.ratesUpdated + 'T00:00:00');
+      document.getElementById('hero-updated').textContent = 'Rates updated ' + d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    } else {
+      document.getElementById('hero-updated').textContent = `Data: ${data.reportMonth}`;
+    }
 
     // Build utility sections
     const container = document.getElementById('utility-sections');
