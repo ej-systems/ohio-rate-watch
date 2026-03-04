@@ -22,10 +22,10 @@ const BASE_URL = 'https://www.energychoice.ohio.gov';
 const pucoAgent = new Agent({ connect: { rejectUnauthorized: false } });
 
 const GAS_TERRITORIES = [
-  { id: 1, name: 'Columbia Gas of Ohio (East)' },
-  { id: 8, name: 'Columbia Gas of Ohio (West)' },
+  { id: 1, name: 'Enbridge Gas Ohio' },
+  { id: 8, name: 'Columbia Gas of Ohio' },
   { id: 10, name: 'Duke Energy Ohio' },
-  { id: 11, name: 'Dominion/Enbridge Gas Ohio' },
+  { id: 11, name: 'CenterPoint Energy Ohio' },
 ];
 
 const RATE_CODES = [1, 2];
@@ -70,36 +70,44 @@ async function fetchRatePage(category, territoryId, rateCode) {
   const evv = html.match(/id="__EVENTVALIDATION" value="([^"]+)"/)?.[1] || '';
   const vsg = html.match(/id="__VIEWSTATEGENERATOR" value="([^"]+)"/)?.[1] || '';
 
-  // Parse SCO/default rate from HTML (best-effort — not always present)
+  // Parse SCO/GCR/default rate from HTML (best-effort — not always present)
+  // Strips HTML first to avoid tag artifacts splitting words (e.g. "rate i s")
   let defaultRate = null;
   let defaultRateText = null;
-  
-  const scoSection = (() => {
-    const idx = html.indexOf('SCO rate is');
-    if (idx === -1) return '';
-    return html.substring(idx, idx + 800)
-      .replace(/<[^>]+>/g, ' ')
-      .replace(/&nbsp;/g, ' ')
-      .replace(/&#\d+;/g, ' ')
-      .replace(/\s+/g, ' ');
-  })();
-  const scoMatch = scoSection.match(/\$([\d.]+)\s*per\s*ccf\s*-\s*Effective\s*([^.]+)/i);
-  if (scoMatch) {
-    defaultRate = parseFloat(scoMatch[1]);
-    defaultRateText = scoMatch[2].trim();
+
+  const cleanHtml = html
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&#\d+;/g, ' ')
+    .replace(/&quot;/g, '"')
+    .replace(/\s+/g, ' ');
+
+  // Match: SCO/GCR rate is $X.XX per ccf/mcf. Tolerates extra spaces from HTML
+  // tag stripping (e.g. "rate i s" from "<b>i</b>s" → "i s")
+  const ratePattern = /(?:SCO|GCR)\s+rate\s+i\s*s\s+\$([\d.]+)\s*per\s*(?:ccf|mcf)\s*-\s*Effective\s*([^.]+)/gi;
+  let rateMatch;
+  while ((rateMatch = ratePattern.exec(cleanHtml)) !== null) {
+    const rate = parseFloat(rateMatch[1]);
+    // Skip the eligibility blurb on Enbridge (Territory 1) — look for
+    // the match that contains an actual effective date, not descriptive text.
+    // A valid rate will be < $50/ccf (the eligibility paragraph has no rate).
+    if (rate > 0 && rate < 50) {
+      defaultRate = rate;
+      defaultRateText = rateMatch[2].trim();
+      break;
+    }
   }
 
-  // Electric PTC fallback
+  // Electric PTC fallback (uses pre-cleaned HTML)
   if (defaultRate === null) {
-    const kwhSection = (() => {
-      const idx = html.indexOf('standard offer');
-      if (idx === -1) return '';
-      return html.substring(idx, idx + 800).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
-    })();
-    const kwhMatch = kwhSection.match(/\$([\d.]+)\s*per\s*kWh\s*-?\s*Effective\s*([^.]+)/i);
-    if (kwhMatch) {
-      defaultRate = parseFloat(kwhMatch[1]);
-      defaultRateText = kwhMatch[2].trim();
+    const stdIdx = cleanHtml.toLowerCase().indexOf('standard offer');
+    if (stdIdx !== -1) {
+      const kwhSection = cleanHtml.substring(stdIdx, stdIdx + 800);
+      const kwhMatch = kwhSection.match(/\$([\d.]+)\s*per\s*kWh\s*-?\s*Effective\s*([^.]+)/i);
+      if (kwhMatch) {
+        defaultRate = parseFloat(kwhMatch[1]);
+        defaultRateText = kwhMatch[2].trim();
+      }
     }
   }
 
