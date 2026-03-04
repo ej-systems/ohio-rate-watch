@@ -29,56 +29,44 @@
   nav a:hover { color: #1565c0; }
 
   /* HERO */
-  .hero { background: linear-gradient(135deg, #1565c0 0%, #0d47a1 100%); color: #fff; padding: 56px 24px 64px; text-align: center; }
+  .hero { background: linear-gradient(135deg, #1565c0 0%, #0d47a1 100%); color: #fff; padding: 48px 24px 56px; text-align: center; }
   .hero h1 { font-size: clamp(1.8rem, 4vw, 2.8rem); font-weight: 900; line-height: 1.15; max-width: 780px; margin: 0 auto 12px; }
-  .hero-sub { font-size: 1.1rem; opacity: 0.9; max-width: 600px; margin: 0 auto; }
+  .hero-sub { font-size: 1.15rem; opacity: 0.9; max-width: 600px; margin: 0 auto; }
   .hero-meta { display: flex; gap: 24px; justify-content: center; flex-wrap: wrap; margin-top: 20px; font-size: 0.9rem; opacity: 0.85; }
 
   /* SECTIONS */
   .section { max-width: 900px; margin: 0 auto; padding: 40px 24px; }
   .section h2 { font-size: 1.5rem; font-weight: 800; margin-bottom: 20px; color: #1a1a2e; }
-  .section h3 { font-size: 1.15rem; font-weight: 700; margin-bottom: 12px; color: #333; }
 
-  /* COMPARISON CARD */
-  .comparison-card { background: #fff; border-radius: 14px; box-shadow: 0 2px 20px rgba(0,0,0,0.08); padding: 28px; margin-bottom: 28px; }
-  .comparison-card .utility-label { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px; color: #666; font-weight: 600; margin-bottom: 8px; }
-  .comparison-grid { display: grid; grid-template-columns: 1fr auto 1fr; gap: 16px; align-items: center; margin: 16px 0; }
-  .rate-box { text-align: center; padding: 16px; border-radius: 10px; }
-  .rate-box.sco { background: #fef2f2; border: 1px solid #fca5a5; }
-  .rate-box.best { background: #f0fdf4; border: 1px solid #bbf7d0; }
-  .rate-box .label { font-size: 0.75rem; text-transform: uppercase; font-weight: 600; color: #666; margin-bottom: 4px; }
-  .rate-box .price { font-size: 1.8rem; font-weight: 900; }
-  .rate-box.sco .price { color: #c62828; }
-  .rate-box.best .price { color: #16a34a; }
-  .rate-box .unit { font-size: 0.75rem; color: #888; }
-  .vs { font-weight: 800; color: #999; font-size: 1.1rem; }
-  .savings-banner { background: #dcfce7; border: 1px solid #86efac; border-radius: 10px; padding: 16px; text-align: center; margin-top: 12px; }
-  .savings-banner .amount { font-size: 1.4rem; font-weight: 900; color: #14532d; }
-  .savings-banner .detail { font-size: 0.85rem; color: #166534; margin-top: 4px; }
+  /* SAVINGS CARD */
+  .savings-card { background: #f0fdf4; border: 2px solid #86efac; border-radius: 14px; padding: 28px; margin-bottom: 28px; text-align: center; }
+  .savings-card .big-save { font-size: 2.2rem; font-weight: 900; color: #16a34a; }
+  .savings-card .save-detail { font-size: 1rem; color: #166534; margin-top: 8px; line-height: 1.6; }
 
-  /* OFFERS TABLE */
-  .offers-table { width: 100%; border-collapse: collapse; margin-top: 16px; }
-  .offers-table th { text-align: left; font-size: 0.75rem; text-transform: uppercase; color: #888; font-weight: 600; padding: 8px 12px; border-bottom: 2px solid #e5e7eb; }
-  .offers-table td { padding: 12px; border-bottom: 1px solid #f0f0f0; font-size: 0.9rem; }
-  .offers-table tr:hover { background: #f9fafb; }
+  /* RECOMMENDATION CARD */
+  .rec-card { background: #fff; border: 2px solid #1565c0; border-radius: 14px; overflow: hidden; margin-bottom: 28px; }
+  .rec-header { background: #1565c0; color: #fff; padding: 14px 24px; font-size: 0.85rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+  .rec-body { padding: 24px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; }
+  .rec-info h3 { font-size: 1.2rem; font-weight: 800; color: #111; margin-bottom: 6px; }
+  .rec-info .rec-meta { font-size: 0.9rem; color: #666; line-height: 1.6; }
+  .rec-price { text-align: right; }
+  .rec-price .monthly { font-size: 1.8rem; font-weight: 900; color: #16a34a; }
+  .rec-price .monthly-label { font-size: 0.8rem; color: #888; }
+  .rec-cta { display: inline-block; background: #1565c0; color: #fff; padding: 12px 28px; border-radius: 8px; font-size: 1rem; font-weight: 700; text-decoration: none; margin-top: 12px; transition: background 0.2s; }
+  .rec-cta:hover { background: #0d47a1; }
+
+  /* PLANS TABLE (inside details) */
+  .plans-details { margin-bottom: 28px; }
+  .plans-details summary { cursor: pointer; padding: 14px 20px; background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; font-size: 0.95rem; font-weight: 700; color: #1565c0; }
+  .plans-details[open] summary { border-radius: 10px 10px 0 0; border-bottom: none; }
+  .plans-table-wrap { background: #fff; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 10px 10px; overflow-x: auto; }
+  .plans-table { width: 100%; border-collapse: collapse; }
+  .plans-table th { text-align: left; font-size: 0.75rem; text-transform: uppercase; color: #888; font-weight: 600; padding: 10px 14px; border-bottom: 2px solid #e5e7eb; }
+  .plans-table td { padding: 12px 14px; border-bottom: 1px solid #f0f0f0; font-size: 0.9rem; }
+  .plans-table tr:hover { background: #f9fafb; }
   .price-cell { font-weight: 700; color: #16a34a; font-size: 1rem; }
   .offer-link { color: #1565c0; font-weight: 600; text-decoration: none; white-space: nowrap; }
   .offer-link:hover { text-decoration: underline; }
-
-  /* BILL CHANGE */
-  .bill-stat { display: inline-flex; align-items: center; gap: 6px; background: #fff; border-radius: 8px; padding: 8px 16px; font-weight: 700; font-size: 1.1rem; }
-  .bill-up { color: #c62828; }
-  .bill-down { color: #16a34a; }
-
-  /* CHART */
-  .chart-wrap { background: #fff; border-radius: 14px; box-shadow: 0 2px 20px rgba(0,0,0,0.08); padding: 28px; margin-bottom: 28px; }
-  .chart-wrap canvas { width: 100% !important; max-height: 320px; }
-
-  /* AGGREGATION */
-  .agg-card { background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 14px; padding: 24px; margin-bottom: 28px; }
-  .agg-card h3 { color: #1e40af; }
-  .agg-card .agg-detail { font-size: 0.9rem; color: #1e3a5f; line-height: 1.6; }
-  .agg-card a { color: #1565c0; font-weight: 600; }
 
   /* HOW TO SWITCH */
   .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; }
@@ -86,6 +74,16 @@
   .step-num { display: inline-flex; width: 40px; height: 40px; border-radius: 50%; background: #1565c0; color: #fff; align-items: center; justify-content: center; font-weight: 800; font-size: 1.1rem; margin-bottom: 12px; }
   .step h4 { font-size: 1rem; margin-bottom: 6px; }
   .step p { font-size: 0.85rem; color: #666; line-height: 1.5; }
+
+  /* AGGREGATION */
+  .agg-card { background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 14px; padding: 24px; margin-bottom: 28px; }
+  .agg-card h3 { color: #1e40af; }
+  .agg-card .agg-detail { font-size: 0.9rem; color: #1e3a5f; line-height: 1.6; }
+  .agg-card a { color: #1565c0; font-weight: 600; }
+
+  /* CHART */
+  .chart-wrap { background: #fff; border-radius: 14px; box-shadow: 0 2px 20px rgba(0,0,0,0.08); padding: 28px; margin-bottom: 28px; }
+  .chart-wrap canvas { width: 100% !important; max-height: 320px; }
 
   /* FOOTER CTA */
   .footer-cta { background: linear-gradient(135deg, #1565c0 0%, #0d47a1 100%); color: #fff; padding: 48px 24px; text-align: center; }
@@ -106,10 +104,10 @@
 
   @media (max-width: 600px) {
     nav { padding: 0 12px; }
-    .comparison-grid { grid-template-columns: 1fr; }
-    .vs { display: none; }
-    .offers-table { font-size: 0.8rem; }
-    .offers-table th, .offers-table td { padding: 8px 6px; }
+    .rec-body { flex-direction: column; text-align: center; }
+    .rec-price { text-align: center; }
+    .plans-table { font-size: 0.8rem; }
+    .plans-table th, .plans-table td { padding: 8px 6px; }
   }
 </style>
 </head>
@@ -136,13 +134,38 @@
   <p class="hero-sub" id="hero-sub"></p>
   <div class="hero-meta">
     <span id="hero-county"></span>
-    <span id="hero-utilities"></span>
     <span id="hero-updated"></span>
   </div>
 </div>
 
-<!-- UTILITY SECTIONS -->
+<!-- UTILITY SECTIONS (savings card + recommendation + plans) -->
 <div id="utility-sections" class="section"></div>
+
+<!-- HOW TO SWITCH -->
+<div class="section">
+  <h2>How to switch (takes ~5 minutes)</h2>
+  <p style="color:#666;margin-bottom:20px;">Switching is free. Your utility still delivers the gas. Nothing changes except your rate.</p>
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">1</div>
+      <h4>Pick a plan</h4>
+      <p>Compare the plans above. Fixed rates lock your price. Look for low monthly cost with no cancellation fee.</p>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <h4>Sign up online</h4>
+      <p>Click "View This Plan" above. You'll need your utility account number from your bill. Takes about 5 minutes.</p>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <h4>Done. That's it.</h4>
+      <p>Your utility still delivers the gas and handles emergencies. You just pay less for the supply part of your bill.</p>
+    </div>
+  </div>
+</div>
+
+<!-- AGGREGATION PROGRAM -->
+<div id="agg-section" class="section" style="display:none;"></div>
 
 <!-- BILL HISTORY CHART -->
 <div class="section">
@@ -151,32 +174,6 @@
     <p style="font-size:0.85rem;color:#888;margin-bottom:16px;">Average monthly gas bill over time for this city</p>
     <canvas id="history-chart"></canvas>
     <p id="no-chart" style="display:none;color:#888;text-align:center;padding:20px;">No historical data available yet.</p>
-  </div>
-</div>
-
-<!-- AGGREGATION PROGRAM -->
-<div id="agg-section" class="section" style="display:none;"></div>
-
-<!-- HOW TO SWITCH -->
-<div class="section">
-  <h2>How to Switch Suppliers</h2>
-  <p style="color:#666;margin-bottom:20px;">Switching is free, takes about 5 minutes, and your utility still delivers the gas. Nothing changes except your supply rate.</p>
-  <div class="steps">
-    <div class="step">
-      <div class="step-num">1</div>
-      <h4>Choose a Supplier</h4>
-      <p>Compare rates above. Fixed rates lock in your price. Look for low $/ccf with no early termination fee.</p>
-    </div>
-    <div class="step">
-      <div class="step-num">2</div>
-      <h4>Sign Up Online</h4>
-      <p>Click "View Offer" on any plan above. You'll need your utility account number from your bill. Takes ~5 minutes.</p>
-    </div>
-    <div class="step">
-      <div class="step-num">3</div>
-      <h4>Done. That's It.</h4>
-      <p>Your utility still delivers the gas and handles emergencies. You just pay less for the supply portion of your bill.</p>
-    </div>
   </div>
 </div>
 
@@ -205,6 +202,12 @@
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
 <script>
+const CCF_PER_MONTH = 83; // 1000 CCF/year ÷ 12
+
+function toMonthly(ratePerCCF) {
+  return Math.round(ratePerCCF * CCF_PER_MONTH);
+}
+
 (async function() {
   const slug = location.pathname.replace(/^\/city\//, '').replace(/\/$/, '');
   if (!slug) { showError('No city specified.'); return; }
@@ -212,7 +215,6 @@
   const cityName = decodeURIComponent(slug).replace(/-/g, ' ');
   const displayName = cityName.replace(/\b\w/g, c => c.toUpperCase());
 
-  // Set initial title
   document.getElementById('page-title').textContent = `Gas Rates in ${displayName}, OH — Ohio Rate Watch`;
 
   try {
@@ -223,7 +225,7 @@
 
     // SEO tags
     const title = `Gas Rates in ${data.city}, OH — Ohio Rate Watch`;
-    const desc = `Compare natural gas supplier rates in ${data.city}, ${data.county} County, Ohio. See average bills, best fixed rates, and how much you could save by switching suppliers.`;
+    const desc = `Compare natural gas rates in ${data.city}, Ohio. See your estimated monthly bill and how much you could save by switching from the default rate.`;
     const url = `https://ohioratewatch.com/city/${slug}`;
     document.getElementById('page-title').textContent = title;
     document.getElementById('page-desc').content = desc;
@@ -247,94 +249,103 @@
       "provider": { "@type": "Organization", "name": "EJ Systems LLC", "url": "https://ohioratewatch.com" }
     });
 
-    // Hero
+    // Hero — one simple number
     document.getElementById('city-name').textContent = data.city;
     const avgBill = data.utilities.reduce((s, u) => s + (u.gasBillTotal || 0), 0) / data.utilities.length;
-    const utilNames = data.utilities.map(u => u.utilityName).join(', ');
-    document.getElementById('hero-sub').textContent = `Average gas bill: $${avgBill.toFixed(2)}/month · ${utilNames}`;
+    document.getElementById('hero-sub').textContent = `The average gas bill here is ~$${Math.round(avgBill)}/month`;
     document.getElementById('hero-county').textContent = `${data.county} County`;
-    document.getElementById('hero-utilities').textContent = `${data.utilities.length} utilit${data.utilities.length === 1 ? 'y' : 'ies'}`;
     document.getElementById('hero-updated').textContent = `Data: ${data.reportMonth}`;
 
     // Build utility sections
     const container = document.getElementById('utility-sections');
     for (const util of data.utilities) {
-      const section = document.createElement('div');
-      section.className = 'comparison-card';
+      const sectionEl = document.createElement('div');
 
-      // Savings calculation: (scoRate - bestPrice) * 100 CCF
-      const bestPrice = util.bestOffers.length > 0 ? util.bestOffers[0].price : null;
-      const monthlySavings = (util.scoRate && bestPrice) ? (util.scoRate - bestPrice) * 100 : 0;
-      const annualSavings = monthlySavings * 12;
+      const bestOffer = util.bestOffers.length > 0 ? util.bestOffers[0] : null;
+      const bestPrice = bestOffer ? bestOffer.price : null;
 
+      // Monthly dollar amounts
+      const scoMonthly = util.scoRate ? toMonthly(util.scoRate) : null;
+      const bestMonthly = bestPrice ? toMonthly(bestPrice) : null;
+      const annualSavings = (scoMonthly && bestMonthly && scoMonthly > bestMonthly)
+        ? (scoMonthly - bestMonthly) * 12 : 0;
+
+      // ── Savings Card ──
       let savingsHtml = '';
-      if (monthlySavings > 0) {
+      if (annualSavings > 0) {
         savingsHtml = `
-          <div class="savings-banner">
-            <div class="amount">Save ~$${annualSavings.toFixed(0)}/year</div>
-            <div class="detail">$${monthlySavings.toFixed(2)}/month by switching from the default SCO rate to the best fixed rate (based on 10 MCF typical usage)</div>
+          <div class="savings-card">
+            <div class="big-save">Save ~$${annualSavings}/year</div>
+            <div class="save-detail">
+              You're probably paying ~$${scoMonthly}/mo (the default rate).<br>
+              The best plan costs ~$${bestMonthly}/mo.<br>
+              <span style="font-size:0.82rem;color:#888;">Based on a typical Ohio home</span>
+            </div>
           </div>`;
       }
 
-      let comparisonHtml = '';
-      if (util.scoRate && bestPrice) {
-        comparisonHtml = `
-          <h3>Am I Overpaying?</h3>
-          <div class="comparison-grid">
-            <div class="rate-box sco">
-              <div class="label">Default SCO Rate</div>
-              <div class="price">$${util.scoRate.toFixed(3)}</div>
-              <div class="unit">per CCF</div>
+      // ── Top Recommendation Card ──
+      let recHtml = '';
+      if (bestOffer) {
+        const etfText = bestOffer.etf > 0 ? `$${bestOffer.etf} cancellation fee` : 'No cancellation fee';
+        const termText = bestOffer.termMonths > 0 ? `${bestOffer.termMonths} month term` : 'Month-to-month';
+        recHtml = `
+          <div class="rec-card">
+            <div class="rec-header">Top recommendation for ${util.utilityName} customers</div>
+            <div class="rec-body">
+              <div class="rec-info">
+                <h3>${bestOffer.supplierName}</h3>
+                <div class="rec-meta">${termText} · ${etfText}</div>
+              </div>
+              <div class="rec-price">
+                <div class="monthly">~$${bestMonthly}/mo</div>
+                <div class="monthly-label">estimated monthly cost</div>
+              </div>
             </div>
-            <div class="vs">vs</div>
-            <div class="rate-box best">
-              <div class="label">Best Fixed Rate</div>
-              <div class="price">$${bestPrice.toFixed(3)}</div>
-              <div class="unit">per CCF</div>
+            <div style="padding:0 24px 20px;text-align:center;">
+              ${bestOffer.signUpUrl
+                ? `<a href="${bestOffer.signUpUrl}" target="_blank" rel="noopener" class="rec-cta">View This Plan &rarr;</a>`
+                : '<span style="color:#888;font-size:0.9rem;">Contact supplier directly to enroll</span>'}
             </div>
-          </div>
-          ${savingsHtml}`;
+          </div>`;
       }
 
-      // Bill change indicator
-      const pctChange = util.gasPctChange;
-      const changeClass = pctChange > 0 ? 'bill-up' : 'bill-down';
-      const changeIcon = pctChange > 0 ? '&#9650;' : '&#9660;';
-      const billChangeHtml = pctChange != null
-        ? `<span class="bill-stat ${changeClass}">${changeIcon} ${Math.abs(pctChange).toFixed(1)}% vs prior month</span>`
+      // ── More Plans (collapsible) ──
+      let plansHtml = '';
+      if (util.bestOffers.length > 1) {
+        const rows = util.bestOffers.map(o => {
+          const mo = toMonthly(o.price);
+          const etfLabel = o.etf > 0 ? '$' + o.etf : 'None';
+          const termLabel = o.termMonths > 0 ? o.termMonths + ' mo' : 'Variable';
+          return `
+            <tr>
+              <td>${o.supplierName}</td>
+              <td class="price-cell">~$${mo}/mo</td>
+              <td>${termLabel}</td>
+              <td>${etfLabel}</td>
+              <td>${o.signUpUrl ? `<a href="${o.signUpUrl}" target="_blank" rel="noopener" class="offer-link">View Plan &rarr;</a>` : '—'}</td>
+            </tr>`;
+        }).join('');
+
+        plansHtml = `
+          <details class="plans-details">
+            <summary>See all ${util.bestOffers.length} plans</summary>
+            <div class="plans-table-wrap">
+              <table class="plans-table">
+                <thead><tr><th>Supplier</th><th>Est. Monthly</th><th>Term</th><th>Cancellation Fee</th><th></th></tr></thead>
+                <tbody>${rows}</tbody>
+              </table>
+            </div>
+          </details>`;
+      }
+
+      // ── Utility label ──
+      const utilLabel = data.utilities.length > 1
+        ? `<h2 style="font-size:1.2rem;font-weight:700;color:#666;margin-bottom:16px;">${util.utilityName}</h2>`
         : '';
 
-      // Offers table
-      let offersHtml = '';
-      if (util.bestOffers.length > 0) {
-        const rows = util.bestOffers.map(o => `
-          <tr>
-            <td>${o.supplierName}</td>
-            <td class="price-cell">$${o.price.toFixed(3)}/ccf</td>
-            <td>${o.termMonths} mo</td>
-            <td>${o.etf > 0 ? '$' + o.etf : 'None'}</td>
-            <td>${o.signUpUrl ? `<a href="${o.signUpUrl}" target="_blank" rel="noopener" class="offer-link">View Offer &#8594;</a>` : '—'}</td>
-          </tr>`).join('');
-        offersHtml = `
-          <h3 style="margin-top:24px;">Best Fixed-Rate Plans</h3>
-          <div style="overflow-x:auto;">
-          <table class="offers-table">
-            <thead><tr><th>Supplier</th><th>Price</th><th>Term</th><th>ETF</th><th></th></tr></thead>
-            <tbody>${rows}</tbody>
-          </table>
-          </div>`;
-      }
-
-      section.innerHTML = `
-        <div class="utility-label">${util.utilityName}</div>
-        <div style="display:flex;gap:20px;align-items:baseline;flex-wrap:wrap;margin-bottom:16px;">
-          <div style="font-size:1.4rem;font-weight:800;">$${(util.gasBillTotal || 0).toFixed(2)}<span style="font-size:0.8rem;color:#888;font-weight:400;">/month avg</span></div>
-          ${billChangeHtml}
-        </div>
-        ${comparisonHtml}
-        ${offersHtml}
-      `;
-      container.appendChild(section);
+      sectionEl.innerHTML = utilLabel + savingsHtml + recHtml + plansHtml;
+      container.appendChild(sectionEl);
     }
 
     // Show content
@@ -444,12 +455,9 @@ async function loadAggregation(cityName, county, utilities) {
     const cityLower = cityName.toLowerCase();
     const countyLower = county ? county.toLowerCase() : '';
 
-    // Match by city name in program name/coverage, or by county
     const matches = programs.filter(p => {
-      // Check territory overlap
       const hasTerritory = p.territory.some(t => utilKeys.includes(t));
       if (!hasTerritory) return false;
-      // Check city/county match
       const nameMatch = p.name.toLowerCase().includes(cityLower) ||
                         (p.coverage && p.coverage.toLowerCase().includes(cityLower)) ||
                         (p.fullName && p.fullName.toLowerCase().includes(cityLower));
@@ -461,7 +469,7 @@ async function loadAggregation(cityName, county, utilities) {
     if (matches.length === 0) return;
 
     const section = document.getElementById('agg-section');
-    let html = '<h2>Aggregation Programs</h2><p style="color:#666;margin-bottom:16px;">Your city or county may offer a group purchasing program with negotiated rates.</p>';
+    let html = '<h2>Group rate programs</h2><p style="color:#666;margin-bottom:16px;">Your city or county may already have a group rate — you might be enrolled without knowing it.</p>';
 
     for (const prog of matches) {
       const rateStr = prog.rate ? `$${prog.rate}/${prog.rateUnit}` : 'Variable';
@@ -474,8 +482,8 @@ async function loadAggregation(cityName, county, utilities) {
             <p><strong>Coverage:</strong> ${prog.coverage || 'See program website'}</p>
             ${prog.notes ? `<p style="margin-top:8px;font-size:0.85rem;color:#555;">${prog.notes}</p>` : ''}
             <p style="margin-top:12px;">
-              <a href="${prog.url}" target="_blank" rel="noopener">Program Website &#8594;</a>
-              ${prog.enrollUrl ? ` · <a href="${prog.enrollUrl}" target="_blank" rel="noopener">Enroll &#8594;</a>` : ''}
+              <a href="${prog.url}" target="_blank" rel="noopener">Program Website &rarr;</a>
+              ${prog.enrollUrl ? ` · <a href="${prog.enrollUrl}" target="_blank" rel="noopener">Enroll &rarr;</a>` : ''}
               ${prog.phone ? ` · <a href="tel:${prog.phone}">${prog.phone}</a>` : ''}
             </p>
           </div>

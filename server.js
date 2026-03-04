@@ -47,6 +47,8 @@ if (!fs.existsSync(LOG_FILE)) {
 
 const pool = new pg.Pool({ connectionString: DATABASE_URL, max: 5 });
 
+let savingsSummaryCache = null; // { ts, data } — cached for 1 hour
+
 // Share pool with history-store module
 import { setPool as setHistoryPool } from './lib/history-store.js';
 setHistoryPool(pool);
@@ -382,6 +384,75 @@ const server = http.createServer(async (req, res) => {
         scrapedDate: latest,
       }));
     } catch (err) {
+      res.writeHead(500, allHeaders());
+      res.end(JSON.stringify({ error: err.message }));
+    }
+    return;
+  }
+
+  // ── /api/savings-summary ────────────────────────────────────────────────
+  // Returns weighted average annual savings across all 4 gas territories
+  // using 1000 CCF/year typical residential usage.
+  if (req.method === 'GET' && url.pathname === '/api/savings-summary') {
+    // Serve from cache if fresh (1 hour)
+    const now = Date.now();
+    if (savingsSummaryCache && now - savingsSummaryCache.ts < 3600_000) {
+      res.writeHead(200, { ...allHeaders(), 'Cache-Control': 'public, max-age=3600' });
+      res.end(JSON.stringify(savingsSummaryCache.data));
+      return;
+    }
+    try {
+      // Approximate customer-count weights (Columbia ~60%, Enbridge ~20%, CenterPoint ~10%, Duke ~10%)
+      const territories = [
+        { id: 8, weight: 0.60 },  // Columbia Gas
+        { id: 1, weight: 0.20 },  // Enbridge
+        { id: 11, weight: 0.10 }, // CenterPoint
+        { id: 10, weight: 0.10 }, // Duke
+      ];
+      let weightedSavings = 0;
+      for (const t of territories) {
+        // Get latest SCO rate
+        const { rows: scoRows } = await pool.query(`
+          SELECT default_rate FROM sco_rates
+          WHERE territory_id = $1 AND category = 'NaturalGas' AND rate_code = '1'
+          ORDER BY scraped_date DESC LIMIT 1
+        `, [t.id]);
+        const scoRate = scoRows[0]?.default_rate;
+        if (!scoRate) continue;
+
+        // Get best non-bundle, non-intro fixed rate
+        const { rows: dateRows } = await pool.query(`
+          SELECT scraped_date FROM supplier_offers
+          WHERE territory_id = $1 AND category = 'NaturalGas' AND rate_code = '1'
+          ORDER BY scraped_date DESC LIMIT 1
+        `, [t.id]);
+        if (!dateRows.length) continue;
+
+        const isMCF = t.id === 1;
+        const { rows: offerRows } = await pool.query(`
+          SELECT price FROM supplier_offers
+          WHERE territory_id = $1 AND category = 'NaturalGas' AND rate_code = '1'
+            AND scraped_date = $2 AND rate_type = 'fixed' AND price > 0
+            AND (is_intro IS NOT TRUE)
+            AND (offer_details NOT ILIKE '%bundle%' AND offer_details NOT ILIKE '%electric%gas%'
+                 AND COALESCE(promo_details,'') NOT ILIKE '%bundle%')
+          ORDER BY price ASC LIMIT 1
+        `, [t.id, dateRows[0].scraped_date]);
+        if (!offerRows.length) continue;
+
+        let bestPrice = offerRows[0].price;
+        if (isMCF) bestPrice = bestPrice / 10; // convert MCF→CCF
+
+        const annualSavings = (scoRate - bestPrice) * 1000; // 1000 CCF/year
+        if (annualSavings > 0) weightedSavings += annualSavings * t.weight;
+      }
+
+      const result = { averageAnnualSavings: Math.round(weightedSavings) };
+      savingsSummaryCache = { ts: now, data: result };
+      res.writeHead(200, { ...allHeaders(), 'Cache-Control': 'public, max-age=3600' });
+      res.end(JSON.stringify(result));
+    } catch (err) {
+      console.error('[api] savings-summary error:', err.message);
       res.writeHead(500, allHeaders());
       res.end(JSON.stringify({ error: err.message }));
     }
