@@ -21,6 +21,14 @@ const BASE_URL = 'https://www.energychoice.ohio.gov';
 // Use a custom agent only for requests to that host instead of disabling TLS globally.
 const pucoAgent = new Agent({ connect: { rejectUnauthorized: false } });
 
+// Ohio natural gas utility territories served by PUCO Energy Choice.
+// Three use the Standard Choice Offer (SCO) system:
+//   - Columbia Gas of Ohio (id 8)
+//   - Enbridge Gas Ohio (id 1)
+//   - CenterPoint Energy Ohio (id 11)
+// Duke Energy Ohio (id 10) uses Gas Cost Recovery (GCR) pricing,
+// but is transitioning to SCO in April 2026.
+// Note: Enbridge reports rates in $/MCF; others use $/CCF (1 MCF = 10 CCF).
 const GAS_TERRITORIES = [
   { id: 1, name: 'Enbridge Gas Ohio' },
   { id: 8, name: 'Columbia Gas of Ohio' },
@@ -82,8 +90,11 @@ async function fetchRatePage(category, territoryId, rateCode) {
     .replace(/&quot;/g, '"')
     .replace(/\s+/g, ' ');
 
-  // Match: SCO/GCR rate is $X.XX per ccf/mcf. Tolerates extra spaces from HTML
-  // tag stripping (e.g. "rate i s" from "<b>i</b>s" → "i s")
+  // Match default rate from PUCO page text. Handles two pricing systems:
+  //   - SCO (Standard Choice Offer): Columbia, Enbridge, CenterPoint
+  //   - GCR (Gas Cost Recovery): Duke Energy (transitioning to SCO April 2026)
+  // Tolerates extra spaces from HTML tag stripping (e.g. "i s" from "<b>i</b>s").
+  // Matches both CCF and MCF units (Enbridge reports in MCF; 1 MCF = 10 CCF).
   const ratePattern = /(?:SCO|GCR)\s+rate\s+i\s*s\s+\$([\d.]+)\s*per\s*(?:ccf|mcf)\s*-\s*Effective\s*([^.]+)/gi;
   let rateMatch;
   while ((rateMatch = ratePattern.exec(cleanHtml)) !== null) {
