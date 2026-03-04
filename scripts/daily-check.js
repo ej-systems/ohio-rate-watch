@@ -44,8 +44,10 @@ function getPool() {
     }
     if (!DATABASE_URL) throw new Error('DATABASE_URL not set');
     const poolOpts = { connectionString: DATABASE_URL };
-    // Railway's public TCP proxy terminates TLS — do not use SSL from the client
-    // Internal connections (.railway.internal) also don't use SSL
+    // Railway's TCP proxy: try both with and without SSL
+    if (!DATABASE_URL.includes('.railway.internal')) {
+      poolOpts.ssl = { rejectUnauthorized: false };
+    }
     _pool = new pg.Pool(poolOpts);
   }
   return _pool;
@@ -354,27 +356,21 @@ async function main() {
   const pool = getPool();
   const dataDir = path.join(ROOT, 'data');
 
-  // Verify DB connection before running the full pipeline
+  // Verify DB connection — try direct Client with detailed error info
   try {
-    const { rows } = await pool.query('SELECT 1 AS ok');
-    log('DB connection OK:', rows[0]);
-  } catch (err) {
-    log('DB connection FAILED:', err.message, '| code:', err.code);
-    log('DATABASE_URL host:', process.env.DATABASE_URL?.replace(/\/\/.*@/, '//<redacted>@'));
-    log('Pool SSL config:', JSON.stringify(pool.options?.ssl || 'none'));
-    // Try raw TCP to see if port is even reachable
-    const net = await import('net');
-    const host = 'trolley.proxy.rlwy.net';
-    const port = 28751;
-    await new Promise((resolve) => {
-      const sock = net.default.createConnection({ host, port, timeout: 5000 }, () => {
-        log(`TCP connect to ${host}:${port} succeeded`);
-        sock.destroy();
-        resolve();
-      });
-      sock.on('error', (e) => { log(`TCP connect to ${host}:${port} failed:`, e.message); resolve(); });
-      sock.on('timeout', () => { log(`TCP connect to ${host}:${port} timed out`); sock.destroy(); resolve(); });
+    const client = new pg.Client({
+      connectionString: process.env.DATABASE_URL,
+      ssl: process.env.DATABASE_URL?.includes('.railway.internal') ? false : { rejectUnauthorized: false },
+      connectionTimeoutMillis: 10000,
     });
+    await client.connect();
+    const { rows } = await client.query('SELECT 1 AS ok');
+    log('DB connection OK:', rows[0]);
+    await client.end();
+  } catch (err) {
+    log('DB connection FAILED:', err.message);
+    log('Full error:', JSON.stringify({ code: err.code, errno: err.errno, syscall: err.syscall }));
+    log('DATABASE_URL:', process.env.DATABASE_URL?.replace(/\/\/[^@]*@/, '//<redacted>@'));
     process.exit(1);
   }
 
