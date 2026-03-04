@@ -8,18 +8,16 @@ on:
   workflow_dispatch: # Allow manual trigger
 
 jobs:
-  trigger-scraper:
+  daily-check:
     runs-on: ubuntu-latest
     steps:
-      - name: Trigger daily check
-        run: |
-          response=$(curl -s -o /dev/null -w "%{http_code}" -X POST \
-            https://ohioratewatch.com/api/cron/daily-check \
-            -H "Content-Type: application/json" \
-            -H "X-Cron-Secret: ${{ secrets.CRON_SECRET }}")
-          echo "Response code: $response"
-          if [ "$response" != "200" ]; then
-            echo "Failed to trigger scraper"
-            exit 1
-          fi
-          echo "Scraper triggered successfully"
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci
+      - run: node scripts/daily-check.js
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}

@@ -43,7 +43,7 @@ See [docs/methodology.md](docs/methodology.md) for full details on scraping, val
 
 ## Stack
 
-- **Backend:** Node.js / Express
+- **Backend:** Node.js (vanilla `http` module)
 - **Database:** PostgreSQL
 - **Frontend:** Vanilla HTML/CSS/JS — no frameworks, no trackers
 - **Hosting:** [Railway](https://railway.app)
@@ -97,18 +97,22 @@ node scripts/daily-check.js --force-alert --dry-run
 
 ```
 ohio-rate-watch/
-├── server.js                  # Express API server
+├── server.js                  # HTTP API server (~1050 lines)
 ├── index.html                 # Main rate comparison page
 ├── learn.html                 # Educational content + county map
 ├── methodology.html           # About & methodology page
 ├── scraper/
 │   └── energy-choice-scraper.js   # PUCO scraper (PostBack/XML)
 ├── scripts/
-│   └── daily-check.js         # Daily scrape + diff + alert fanout
+│   └── daily-check.js         # CLI entry point: scrape + alerts + reminders
 ├── lib/
+│   ├── shared.js              # CORS headers, sendEmail, rate limiting, constants
+│   ├── cron-handler.js        # Core scrape pipeline (used by server + CLI)
 │   └── history-store.js       # DB insert/query helpers
 ├── docs/
 │   └── methodology.md         # Full data methodology
+├── .github/workflows/
+│   └── daily-scraper.yml      # Runs daily-check.js every 6 hours
 ├── .env.example               # Required environment variables
 └── zip-territory.json         # ZIP → utility mapping (1,253 Ohio ZIPs)
 ```
