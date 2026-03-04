@@ -356,6 +356,17 @@ async function main() {
   const pool = getPool();
   const dataDir = path.join(ROOT, 'data');
 
+  // Verify DB connection before running the full pipeline
+  try {
+    const { rows } = await pool.query('SELECT 1 AS ok');
+    log('DB connection OK:', rows[0]);
+  } catch (err) {
+    log('DB connection FAILED:', err.message, '| code:', err.code);
+    log('DATABASE_URL host:', process.env.DATABASE_URL?.replace(/\/\/.*@/, '//<redacted>@'));
+    log('Pool SSL config:', JSON.stringify(pool.options?.ssl || 'none'));
+    process.exit(1);
+  }
+
   // Run the core scrape + store pipeline (shared with server.js cron endpoint)
   const result = await runDailyCheck(pool, { sendEmailFn: sharedSendEmail, dataDir });
 
