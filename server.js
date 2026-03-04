@@ -1123,9 +1123,9 @@ const server = http.createServer(async (req, res) => {
         const territoryId = TERRITORY_IDS[row.utility_key];
         if (!territoryId) continue;
 
-        // Best 5 fixed offers (non-intro, price > 0)
+        // Best fixed offers (non-intro, price > 0), bundle-required plans sorted last
         const { rows: offers } = await pool.query(`
-          SELECT supplier_name, price, term_months, sign_up_url, etf
+          SELECT supplier_name, price, term_months, sign_up_url, etf, offer_details, promo_details
           FROM supplier_offers
           WHERE territory_id = $1
             AND category = 'NaturalGas'
@@ -1134,18 +1134,27 @@ const server = http.createServer(async (req, res) => {
             AND price > 0
             AND (is_intro = FALSE OR is_intro IS NULL)
             AND scraped_date = (SELECT MAX(scraped_date) FROM supplier_offers WHERE territory_id = $1 AND category = 'NaturalGas')
-          ORDER BY price ASC
-          LIMIT 5
+          ORDER BY
+            CASE WHEN offer_details ILIKE '%bundle%' OR offer_details ILIKE '%electric%gas%'
+                   OR offer_details ILIKE '%gas%electric%' OR COALESCE(promo_details,'') ILIKE '%bundle%'
+                 THEN 1 ELSE 0 END,
+            price ASC
+          LIMIT 10
         `, [territoryId]);
 
-        // Convert Enbridge MCF prices to CCF
-        const convertedOffers = offers.map(o => ({
-          supplierName: o.supplier_name,
-          price: territoryId === 1 ? Math.round((o.price / 10) * 10000) / 10000 : o.price,
-          termMonths: o.term_months,
-          signUpUrl: o.sign_up_url,
-          etf: o.etf || 0,
-        }));
+        // Convert Enbridge MCF prices to CCF; flag bundle-required offers
+        const convertedOffers = offers.map(o => {
+          const details = (o.offer_details || '') + ' ' + (o.promo_details || '');
+          const isBundle = /bundle|electric.*gas|gas.*electric/i.test(details);
+          return {
+            supplierName: o.supplier_name,
+            price: territoryId === 1 ? Math.round((o.price / 10) * 10000) / 10000 : o.price,
+            termMonths: o.term_months,
+            signUpUrl: o.sign_up_url,
+            etf: o.etf || 0,
+            requiresBundle: isBundle,
+          };
+        });
 
         // SCO rate
         const { rows: scoRows } = await pool.query(`

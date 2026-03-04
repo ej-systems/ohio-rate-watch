@@ -261,7 +261,8 @@ function toMonthly(ratePerCCF) {
     for (const util of data.utilities) {
       const sectionEl = document.createElement('div');
 
-      const bestOffer = util.bestOffers.length > 0 ? util.bestOffers[0] : null;
+      // Pick best non-bundle offer for recommendation; bundles sort last
+      const bestOffer = util.bestOffers.find(o => !o.requiresBundle) || util.bestOffers[0] || null;
       const bestPrice = bestOffer ? bestOffer.price : null;
 
       // Monthly dollar amounts
@@ -317,9 +318,12 @@ function toMonthly(ratePerCCF) {
           const mo = toMonthly(o.price);
           const etfLabel = o.etf > 0 ? '$' + o.etf : 'None';
           const termLabel = o.termMonths > 0 ? o.termMonths + ' mo' : 'Variable';
+          const bundleBadge = o.requiresBundle
+            ? ' <span style="background:#fce7f3;color:#9d174d;font-size:0.7rem;font-weight:700;padding:2px 6px;border-radius:4px;">Requires bundle</span>'
+            : '';
           return `
-            <tr>
-              <td>${o.supplierName}</td>
+            <tr${o.requiresBundle ? ' style="opacity:0.7;"' : ''}>
+              <td>${o.supplierName}${bundleBadge}</td>
               <td class="price-cell">~$${mo}/mo</td>
               <td>${termLabel}</td>
               <td>${etfLabel}</td>
