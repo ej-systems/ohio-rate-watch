@@ -46,7 +46,7 @@ function getPool() {
     const poolOpts = { connectionString: DATABASE_URL };
     // Railway's public TCP proxy requires SSL; internal connections do not
     if (!DATABASE_URL.includes('.railway.internal')) {
-      poolOpts.ssl = { rejectUnauthorized: false };
+      poolOpts.ssl = true;
     }
     _pool = new pg.Pool(poolOpts);
   }
