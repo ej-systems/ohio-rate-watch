@@ -737,6 +737,17 @@ const server = http.createServer(async (req, res) => {
         pagesScraped = current.length;
         console.log(`[cron] Scraped ${current.length} rate pages`);
 
+        // Check for missing SCO rates on gas territories (fragile HTML regex)
+        const GAS_TERRITORY_IDS = [1, 8, 10, 11];
+        const missingSCO = current
+          .filter(p => p.category === 'NaturalGas' && p.rateCode === 1 && GAS_TERRITORY_IDS.includes(p.territoryId) && p.defaultRate == null)
+          .map(p => p.territoryName || `Territory ${p.territoryId}`);
+        if (missingSCO.length > 0) {
+          const msg = `SCO rate extraction failed for: ${missingSCO.join(', ')}`;
+          console.error(`[cron] WARNING: ${msg}`);
+          errors.push(msg);
+        }
+
         // Save latest to file (ephemeral but useful within container lifecycle)
         const dataDir = path.join(__dirname, 'data');
         fs.mkdirSync(dataDir, { recursive: true });
@@ -1125,7 +1136,7 @@ const server = http.createServer(async (req, res) => {
 
         // Best fixed offers (non-intro, price > 0), bundle-required plans sorted last
         const { rows: offers } = await pool.query(`
-          SELECT supplier_name, price, term_months, sign_up_url, etf, offer_details, promo_details
+          SELECT supplier_name, price, term_months, sign_up_url, etf, is_bundle_required
           FROM supplier_offers
           WHERE territory_id = $1
             AND category = 'NaturalGas'
@@ -1134,27 +1145,19 @@ const server = http.createServer(async (req, res) => {
             AND price > 0
             AND (is_intro = FALSE OR is_intro IS NULL)
             AND scraped_date = (SELECT MAX(scraped_date) FROM supplier_offers WHERE territory_id = $1 AND category = 'NaturalGas')
-          ORDER BY
-            CASE WHEN offer_details ILIKE '%bundle%' OR offer_details ILIKE '%electric%gas%'
-                   OR offer_details ILIKE '%gas%electric%' OR COALESCE(promo_details,'') ILIKE '%bundle%'
-                 THEN 1 ELSE 0 END,
-            price ASC
+          ORDER BY is_bundle_required ASC, price ASC
           LIMIT 10
         `, [territoryId]);
 
-        // Convert Enbridge MCF prices to CCF; flag bundle-required offers
-        const convertedOffers = offers.map(o => {
-          const details = (o.offer_details || '') + ' ' + (o.promo_details || '');
-          const isBundle = /bundle|electric.*gas|gas.*electric/i.test(details);
-          return {
-            supplierName: o.supplier_name,
-            price: territoryId === 1 ? Math.round((o.price / 10) * 10000) / 10000 : o.price,
-            termMonths: o.term_months,
-            signUpUrl: o.sign_up_url,
-            etf: o.etf || 0,
-            requiresBundle: isBundle,
-          };
-        });
+        // Convert Enbridge MCF prices to CCF
+        const convertedOffers = offers.map(o => ({
+          supplierName: o.supplier_name,
+          price: territoryId === 1 ? Math.round((o.price / 10) * 10000) / 10000 : o.price,
+          termMonths: o.term_months,
+          signUpUrl: o.sign_up_url,
+          etf: o.etf || 0,
+          requiresBundle: o.is_bundle_required === true,
+        }));
 
         // SCO rate
         const { rows: scoRows } = await pool.query(`

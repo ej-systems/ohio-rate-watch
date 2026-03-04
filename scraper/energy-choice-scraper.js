@@ -230,35 +230,49 @@ async function discoverElectricTerritories() {
 /**
  * Scrape all Ohio territory/rate combinations.
  */
-async function scrapeAllRates() {
+async function scrapeAllRates({ includeElectric = false } = {}) {
   console.error('[EnergyChoice] Starting full Ohio rate scrape (XML export)...');
 
   const allResults = [];
-
-  const electricTerritories = await discoverElectricTerritories();
-  console.error(`[EnergyChoice] Found ${electricTerritories.length} electric territories`);
 
   const jobs = [
     ...GAS_TERRITORIES.flatMap((t) =>
       RATE_CODES.map((rc) => ({ category: 'NaturalGas', ...t, rateCode: rc }))
     ),
-    ...electricTerritories.flatMap((t) =>
-      RATE_CODES.map((rc) => ({ category: 'Electric', ...t, rateCode: rc }))
-    ),
   ];
 
+  if (includeElectric || process.env.SCRAPE_ELECTRIC === '1') {
+    const electricTerritories = await discoverElectricTerritories();
+    console.error(`[EnergyChoice] Found ${electricTerritories.length} electric territories`);
+    jobs.push(...electricTerritories.flatMap((t) =>
+      RATE_CODES.map((rc) => ({ category: 'Electric', ...t, rateCode: rc }))
+    ));
+  } else {
+    console.error('[EnergyChoice] Skipping electric territories (set SCRAPE_ELECTRIC=1 to include)');
+  }
+
   for (const job of jobs) {
-    try {
-      console.error(`[EnergyChoice] Fetching ${job.category} territory=${job.id} rateCode=${job.rateCode}...`);
-      const result = await fetchRatePage(job.category, job.id, job.rateCode);
+    const label = `${job.category} territory=${job.id} rateCode=${job.rateCode}`;
+    let result = null;
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      try {
+        console.error(`[EnergyChoice] Fetching ${label}${attempt > 1 ? ' (retry)' : ''}...`);
+        result = await fetchRatePage(job.category, job.id, job.rateCode);
+        break; // success
+      } catch (err) {
+        console.error(`[EnergyChoice] Attempt ${attempt} failed for ${label}: ${err.message}`);
+        if (attempt === 1) {
+          await new Promise((r) => setTimeout(r, 5000)); // 5s backoff before retry
+        }
+      }
+    }
+    if (result) {
       result.territoryName = job.name;
       allResults.push(result);
-
-      // Polite delay between requests
-      await new Promise((r) => setTimeout(r, 1500 + Math.random() * 500));
-    } catch (err) {
-      console.error(`[EnergyChoice] Error for territory ${job.id}: ${err.message}`);
     }
+
+    // Polite delay between requests
+    await new Promise((r) => setTimeout(r, 1500 + Math.random() * 500));
   }
 
   console.error(`[EnergyChoice] Done — ${allResults.length} rate pages scraped`);
@@ -309,6 +323,27 @@ function detectChanges(previous, current) {
           currRate: currSupplier.price,
           changePct,
           summary: `${currSupplier.name} (${curr.territoryName}): $${prevSupplier.price} → $${currSupplier.price}/unit (${changePct > 0 ? '+' : ''}${changePct}%)`,
+        });
+      }
+    }
+
+    // Detect removed offers (existed in previous but missing from current)
+    for (const prevSupplier of (prev.suppliers || [])) {
+      if (prevSupplier.price === null) continue;
+      const stillExists = curr.suppliers.find(
+        (s) => s.name === prevSupplier.name && s.termMonths === prevSupplier.termMonths && s.rateType === prevSupplier.rateType
+      );
+      if (!stillExists) {
+        changes.push({
+          type: 'removed_offer',
+          key: `${curr.category}:${curr.territoryId}:${curr.rateCode}`,
+          territory: curr.territoryName || `Territory ${curr.territoryId}`,
+          category: curr.category,
+          supplier: prevSupplier.name,
+          prevRate: prevSupplier.price,
+          currRate: null,
+          changePct: null,
+          summary: `${prevSupplier.name} (${curr.territoryName}): offer removed (was $${prevSupplier.price}/unit, ${prevSupplier.termMonths || '?'}mo ${prevSupplier.rateType})`,
         });
       }
     }
