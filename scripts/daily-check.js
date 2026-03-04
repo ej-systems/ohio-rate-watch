@@ -43,12 +43,7 @@ function getPool() {
       }
     }
     if (!DATABASE_URL) throw new Error('DATABASE_URL not set');
-    const poolOpts = { connectionString: DATABASE_URL };
-    // Railway's TCP proxy: try both with and without SSL
-    if (!DATABASE_URL.includes('.railway.internal')) {
-      poolOpts.ssl = { rejectUnauthorized: false };
-    }
-    _pool = new pg.Pool(poolOpts);
+    _pool = new pg.Pool({ connectionString: DATABASE_URL });
   }
   return _pool;
 }
@@ -355,24 +350,6 @@ async function main() {
 
   const pool = getPool();
   const dataDir = path.join(ROOT, 'data');
-
-  // Verify DB connection — try direct Client with detailed error info
-  try {
-    const client = new pg.Client({
-      connectionString: process.env.DATABASE_URL,
-      ssl: process.env.DATABASE_URL?.includes('.railway.internal') ? false : { rejectUnauthorized: false },
-      connectionTimeoutMillis: 10000,
-    });
-    await client.connect();
-    const { rows } = await client.query('SELECT 1 AS ok');
-    log('DB connection OK:', rows[0]);
-    await client.end();
-  } catch (err) {
-    log('DB connection FAILED:', err.message);
-    log('Full error:', JSON.stringify({ code: err.code, errno: err.errno, syscall: err.syscall }));
-    log('DATABASE_URL:', process.env.DATABASE_URL?.replace(/\/\/[^@]*@/, '//<redacted>@'));
-    process.exit(1);
-  }
 
   // Run the core scrape + store pipeline (shared with server.js cron endpoint)
   const result = await runDailyCheck(pool, { sendEmailFn: sharedSendEmail, dataDir });
