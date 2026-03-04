@@ -43,7 +43,12 @@ function getPool() {
       }
     }
     if (!DATABASE_URL) throw new Error('DATABASE_URL not set');
-    _pool = new pg.Pool({ connectionString: DATABASE_URL });
+    const poolOpts = { connectionString: DATABASE_URL };
+    // Railway's public TCP proxy requires SSL; internal connections do not
+    if (!DATABASE_URL.includes('.railway.internal')) {
+      poolOpts.ssl = { rejectUnauthorized: false };
+    }
+    _pool = new pg.Pool(poolOpts);
   }
   return _pool;
 }
