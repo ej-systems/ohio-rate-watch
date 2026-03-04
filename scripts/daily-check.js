@@ -364,6 +364,19 @@ async function main() {
     log('DB connection FAILED:', err.message, '| code:', err.code);
     log('DATABASE_URL host:', process.env.DATABASE_URL?.replace(/\/\/.*@/, '//<redacted>@'));
     log('Pool SSL config:', JSON.stringify(pool.options?.ssl || 'none'));
+    // Try raw TCP to see if port is even reachable
+    const net = await import('net');
+    const host = 'trolley.proxy.rlwy.net';
+    const port = 28751;
+    await new Promise((resolve) => {
+      const sock = net.default.createConnection({ host, port, timeout: 5000 }, () => {
+        log(`TCP connect to ${host}:${port} succeeded`);
+        sock.destroy();
+        resolve();
+      });
+      sock.on('error', (e) => { log(`TCP connect to ${host}:${port} failed:`, e.message); resolve(); });
+      sock.on('timeout', () => { log(`TCP connect to ${host}:${port} timed out`); sock.destroy(); resolve(); });
+    });
     process.exit(1);
   }
 
