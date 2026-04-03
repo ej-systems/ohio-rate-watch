@@ -6,3 +6,5 @@ data/*.json
 !data/aggregation-programs.json
 scraper/node_modules/
 data/rates-*.json
+CLAUDE.md
+.claude/
